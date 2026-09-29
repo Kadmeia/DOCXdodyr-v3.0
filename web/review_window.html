@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Проверка найденных сущностей — DOCXдодыр</title>
+    <style>
+        :root {
+            --bg-body: #f1f5f9;
+            --bg-header: #ffffff;
+            --bg-card: #ffffff;
+            --bg-inner: #f8fafc;
+            --border: #e2e8f0;
+            --border-hover: #3b82f6;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --badge-bg: #e2e8f0;
+            --badge-text: #334155;
+            --token-bg: rgba(37, 99, 235, 0.12);
+            --token-border: rgba(37, 99, 235, 0.3);
+            --token-text: #1d4ed8;
+        }
+
+        html.dark {
+            --bg-body: #0b1120;
+            --bg-header: #131b2e;
+            --bg-card: #131b2e;
+            --bg-inner: #0b101d;
+            --border: #263550;
+            --border-hover: #60a5fa;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --badge-bg: #1e293b;
+            --badge-text: #cbd5e1;
+            --token-bg: rgba(59, 130, 246, 0.22);
+            --token-border: rgba(96, 165, 250, 0.4);
+            --token-text: #93c5fd;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Header */
+        header {
+            background-color: var(--bg-header);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-shrink: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .header-title-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .badge-app {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            background: var(--badge-bg);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+
+        /* Stats & Toolbar */
+        .stats-pills {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-inner);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+
+        .stats-pills .divider {
+            color: var(--border);
+        }
+
+        .stat-val-amber { color: #f59e0b; font-weight: 600; }
+        .stat-val-green { color: #10b981; font-weight: 600; }
+        .stat-val-red { color: #ef4444; font-weight: 600; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 7px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: #ffffff;
+        }
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border-color: var(--border);
+            color: var(--text-main);
+        }
+        .btn-outline:hover {
+            background-color: var(--bg-inner);
+            border-color: var(--border-hover);
+        }
+
+        .btn-icon {
+            padding: 7px;
+            color: var(--text-muted);
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-icon:hover {
+            color: var(--text-main);
+            background: var(--bg-inner);
+        }
+
+        /* Filter Toolbar */
+        .filter-toolbar {
+            background-color: var(--bg-inner);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+
+        .input-search-box {
+            position: relative;
+            flex: 1;
+            min-width: 240px;
+        }
+        .input-search-box input {
+            width: 100%;
+            padding: 7px 12px 7px 32px;
+            font-size: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background-color: var(--bg-header);
+            color: var(--text-main);
+            outline: none;
+        }
+        .input-search-box input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+        .input-search-box svg {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 14px;
+            height: 14px;
+            color: var(--text-muted);
+        }
+
+        select {
+            padding: 7px 12px;
+            font-size: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background-color: var(--bg-header);
+            color: var(--text-main);
+            outline: none;
+            cursor: pointer;
+        }
+        select:focus {
+            border-color: var(--primary);
+        }
+
+        .filter-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-left: auto;
+            white-space: nowrap;
+        }
+
+        /* Main Content Cards Feed */
+        main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+            gap: 16px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 640px) {
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px 18px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 12px;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .card:hover {
+            border-color: var(--border-hover);
+            box-shadow: 0 4px 18px rgba(0,0,0,0.06);
+        }
+        .card.selected {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--primary);
+        }
+
+        .card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .card-tags {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .pill-type {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+            border: 1px solid transparent;
+        }
+        .pill-token {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 6px;
+            background: var(--bg-inner);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+        }
+
+        .pill-status {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 6px;
+            border: 1px solid transparent;
+        }
+        .status-pending { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border-color: rgba(245, 158, 11, 0.25); }
+        .status-accepted { background: rgba(16, 185, 129, 0.12); color: #10b981; border-color: rgba(16, 185, 129, 0.25); }
+        .status-rejected { background: rgba(239, 68, 68, 0.12); color: #ef4444; border-color: rgba(239, 68, 68, 0.25); }
+        .status-skipped { background: rgba(148, 163, 184, 0.12); color: #94a3b8; border-color: rgba(148, 163, 184, 0.25); }
+
+        .card-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .card-context {
+            background-color: var(--bg-inner);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 13px;
+            line-height: 1.55;
+            color: var(--text-main);
+            word-break: break-word;
+        }
+
+        .highlight-token {
+            background-color: var(--token-bg);
+            color: var(--token-text);
+            border: 1px solid var(--token-border);
+            border-radius: 4px;
+            padding: 1px 5px;
+            font-weight: 600;
+        }
+
+        .card-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            border-top: 1px solid var(--border);
+            padding-top: 10px;
+        }
+
+        .btn-act-accept {
+            background: rgba(16, 185, 129, 0.12);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-act-accept:hover {
+            background: rgba(16, 185, 129, 0.22);
+        }
+
+        .btn-act-reject {
+            background: rgba(239, 68, 68, 0.12);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-act-reject:hover {
+            background: rgba(239, 68, 68, 0.22);
+        }
+
+        .btn-act-skip {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            font-size: 11px;
+            font-weight: 500;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-act-skip:hover {
+            color: var(--text-main);
+            background: var(--bg-inner);
+        }
+
+        /* Bottom Status Footer */
+        footer {
+            background-color: var(--bg-header);
+            border-top: 1px solid var(--border);
+            padding: 6px 24px;
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        kbd {
+            font-family: ui-monospace, SFMono-Regular, monospace;
+            background: var(--bg-inner);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 1px 5px;
+            font-size: 10px;
+            color: var(--text-main);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 64px 16px;
+            color: var(--text-muted);
+        }
+        .empty-icon {
+            font-size: 42px;
+            margin-bottom: 12px;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.45); }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="header-title-box">
+            <div class="header-icon">🔍</div>
+            <div>
+                <div class="header-title">
+                    <span>Проверка найденных сущностей</span>
+                    <span class="badge-app">DOCXдодыр v3.0</span>
+                </div>
+                <p class="header-subtitle">Полноразмерное отдельное окно для комфортного чтения и проверки</p>
+            </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div class="stats-pills">
+                <span>Всего: <strong id="stat-total">0</strong></span>
+                <span class="divider">|</span>
+                <span class="stat-val-amber">Ожидают: <strong id="stat-pending">0</strong></span>
+                <span class="divider">|</span>
+                <span class="stat-val-green">Принято: <strong id="stat-accepted">0</strong></span>
+                <span class="divider">|</span>
+                <span class="stat-val-red">Отклонено: <strong id="stat-rejected">0</strong></span>
+            </div>
+
+            <button type="button" class="btn btn-primary" onclick="batchAcceptFiltered()">
+                <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                <span>Принять отфильтрованные</span>
+            </button>
+
+            <button type="button" class="btn-icon" onclick="refreshList(true)" title="Обновить список">
+                <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
+
+            <button type="button" class="btn-icon" onclick="toggleTheme()" title="Переключить тему">
+                <span id="theme-toggle-label">🌓</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Filters Bar -->
+    <div class="filter-toolbar">
+        <div class="input-search-box">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="search" id="filter-search" oninput="onFilterChange()" placeholder="Поиск по тексту контекста, плейсхолдеру или имени файла...">
+        </div>
+
+        <select id="filter-type" onchange="onFilterChange()">
+            <option value="">Все типы сущностей</option>
+        </select>
+
+        <select id="filter-status" onchange="onFilterChange()">
+            <option value="pending" selected>Ожидают проверки</option>
+            <option value="">Все статусы</option>
+            <option value="accepted">Принято</option>
+            <option value="rejected">Отклонено</option>
+            <option value="skipped">Пропущено</option>
+        </select>
+
+        <button type="button" class="btn btn-outline" onclick="resetFilters()">Сбросить</button>
+
+        <span id="filter-hint" class="filter-hint">Загрузка...</span>
+    </div>
+
+    <!-- Cards Feed -->
+    <main>
+        <div id="findings-list" class="cards-grid"></div>
+
+        <div id="empty-state" class="empty-state" style="display:none;">
+            <div class="empty-icon">✨</div>
+            <h3 style="font-size:16px;font-weight:600;margin-bottom:6px;">Нет находок для проверки</h3>
+            <p style="font-size:12px;">Все сущности уже проверены или не подходят под выбранные фильтры.</p>
+        </div>
+
+        <div id="load-more-box" style="text-align:center;padding:24px 0;display:none;">
+            <button type="button" id="btn-load-more" class="btn btn-outline" style="padding:8px 24px;" onclick="loadMore()">
+                Показать следующие находки
+            </button>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div style="display:flex;align-items:center;gap:14px;">
+            <span>Горячие клавиши:</span>
+            <span><kbd>Enter</kbd> или <kbd>A</kbd> — Принять</span>
+            <span><kbd>Del</kbd> или <kbd>D</kbd> — Отклонить</span>
+            <span><kbd>Space</kbd> или <kbd>S</kbd> — Пропустить</span>
+            <span><kbd>↑</kbd> <kbd>↓</kbd> — Переход между карточками</span>
+        </div>
+        <span>Окно проверки сущностей · DOCXдодыр</span>
+    </footer>
+
+    <script>
+        const state = {
+            items: [],
+            summary: {},
+            totalFiltered: 0,
+            limit: 60,
+            offset: 0,
+            selectedIndex: -1
+        };
+
+        // Theme management
+        function initTheme() {
+            let theme = 'dark';
+            try { theme = localStorage.getItem('theme') || 'dark'; } catch(e) {}
+            const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.classList.toggle('dark', isDark);
+        }
+
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch(e) {}
+        }
+
+        function getFilters() {
+            return {
+                search: document.getElementById('filter-search').value.trim().toLowerCase(),
+                entity_type: document.getElementById('filter-type').value,
+                status: document.getElementById('filter-status').value
+            };
+        }
+
+        let filterTimer = null;
+        function onFilterChange() {
+            clearTimeout(filterTimer);
+            filterTimer = setTimeout(() => {
+                refreshList(true);
+            }, 250);
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-search').value = '';
+            document.getElementById('filter-type').value = '';
+            document.getElementById('filter-status').value = 'pending';
+            refreshList(true);
+        }
+
+        function getTypeStyles(type) {
+            const t = (type || '').toLowerCase();
+            if (t.includes('фио')) return { bg: 'rgba(59, 130, 246, 0.15)', text: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)' };
+            if (t.includes('наименование') || t.includes('организац')) return { bg: 'rgba(168, 85, 247, 0.15)', text: '#a855f7', border: 'rgba(168, 85, 247, 0.3)' };
+            if (t.includes('адрес')) return { bg: 'rgba(16, 185, 129, 0.15)', text: '#10b981', border: 'rgba(16, 185, 129, 0.3)' };
+            if (t.includes('дата')) return { bg: 'rgba(245, 158, 11, 0.15)', text: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)' };
+            if (t.includes('паспорт') || t.includes('документ')) return { bg: 'rgba(244, 63, 94, 0.15)', text: '#f43f5e', border: 'rgba(244, 63, 94, 0.3)' };
+            if (t.includes('счет') || t.includes('банк') || t.includes('инн')) return { bg: 'rgba(6, 182, 212, 0.15)', text: '#06b6d4', border: 'rgba(6, 182, 212, 0.3)' };
+            return { bg: 'rgba(148, 163, 184, 0.15)', text: '#94a3b8', border: 'rgba(148, 163, 184, 0.3)' };
+        }
+
+        function formatPosition(p) {
+            if (!p || typeof p !== 'object') return '';
+            if (p.kind === 'cell' && p.sheet) return `Лист «${p.sheet}», ячейка ${p.cell || ''}`;
+            if (p.kind === 'table_cell') return `${p.scope === 'header_footer' ? 'Колонтитул' : 'Таблица'} · стр. ${(p.row || 0) + 1}, яч. ${(p.column || 0) + 1}`;
+            if (p.kind === 'paragraph') return `${p.scope === 'header_footer' ? 'Колонтитул' : 'Абзац'} ${(p.index || 0) + 1}`;
+            if (p.page != null) return `Страница ${Number(p.page) + 1}`;
+            return '';
+        }
+
+        function highlightContext(context, placeholder) {
+            if (!context) return '—';
+            const div = document.createElement('div');
+            div.textContent = context;
+            let safe = div.innerHTML;
+
+            if (placeholder) {
+                const escaped = placeholder.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                safe = safe.replace(new RegExp(`(${escaped})`, 'gi'), '<span class="highlight-token">$1</span>');
+            }
+            return safe;
+        }
+
+        async function fetchFindings(reset = false) {
+            if (reset) {
+                state.offset = 0;
+                state.items = [];
+            }
+            const filters = getFilters();
+            const api = window.pywebview && window.pywebview.api;
+            
+            if (api && typeof api.get_review_findings === 'function') {
+                try {
+                    const res = await api.get_review_findings(
+                        filters.entity_type,
+                        filters.search,
+                        filters.status,
+                        0,
+                        state.limit,
+                        state.offset
+                    );
+                    return res;
+                } catch(e) {
+                    console.error('Error in get_review_findings:', e);
+                }
+            }
+
+            // Fallback for standalone demo
+            return getMockFindings(filters, state.limit, state.offset);
+        }
+
+        async function refreshList(reset = false) {
+            const data = await fetchFindings(reset);
+            if (!data) return;
+
+            state.summary = data.summary || {};
+            updateStatsBar(data.summary);
+            populateTypesDropdown(data.entity_types || []);
+
+            const newItems = data.items || [];
+            if (reset) {
+                state.items = newItems;
+            } else {
+                state.items = state.items.concat(newItems);
+            }
+
+            const totalFiltered = data.total_filtered != null 
+                ? data.total_filtered 
+                : (data.filtered_summary ? data.filtered_summary.total : state.items.length);
+            state.totalFiltered = totalFiltered;
+
+            renderCards();
+
+            const hint = document.getElementById('filter-hint');
+            hint.textContent = totalFiltered > 0
+                ? `Показано ${state.items.length} из ${totalFiltered}`
+                : 'Находок нет';
+
+            const loadMoreBox = document.getElementById('load-more-box');
+            if (state.items.length < totalFiltered) {
+                loadMoreBox.style.display = 'block';
+                document.getElementById('btn-load-more').textContent = `Показать следующие ${Math.min(state.limit, totalFiltered - state.items.length)} из ${totalFiltered}`;
+            } else {
+                loadMoreBox.style.display = 'none';
+            }
+        }
+
+        function updateStatsBar(summary = {}) {
+            document.getElementById('stat-total').textContent = summary.total || 0;
+            document.getElementById('stat-pending').textContent = summary.pending || 0;
+            document.getElementById('stat-accepted').textContent = summary.accepted || 0;
+            document.getElementById('stat-rejected').textContent = summary.rejected || 0;
+        }
+
+        function populateTypesDropdown(types = []) {
+            const select = document.getElementById('filter-type');
+            const current = select.value;
+            if (select.options.length > 1 && types.length === 0) return;
+
+            select.innerHTML = '<option value="">Все типы сущностей</option>';
+            types.sort().forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t;
+                opt.textContent = t;
+                if (t === current) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        function escapeHtml(str) {
+            if (str == null) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function renderCards() {
+            const container = document.getElementById('findings-list');
+            const empty = document.getElementById('empty-state');
+            container.innerHTML = '';
+
+            if (!state.items || state.items.length === 0) {
+                empty.style.display = 'block';
+                return;
+            }
+            empty.style.display = 'none';
+
+            state.items.forEach((item, index) => {
+                const card = document.createElement('article');
+                card.className = `card ${index === state.selectedIndex ? 'selected' : ''}`;
+                card.setAttribute('data-id', item.finding_id);
+                card.onclick = () => selectCard(index);
+
+                const typeSt = getTypeStyles(item.entity_type);
+                const posStr = formatPosition(item.position);
+                const docName = item.document_ref ? item.document_ref.split(/[\\/]/).pop() : 'Документ';
+                const confidence = item.confidence != null ? `${Math.round(item.confidence * 100)}%` : '';
+
+                let statusBadge = '';
+                if (item.status === 'accepted') statusBadge = '<span class="pill-status status-accepted">✓ Принято</span>';
+                else if (item.status === 'rejected') statusBadge = '<span class="pill-status status-rejected">✕ Отклонено</span>';
+                else if (item.status === 'skipped') statusBadge = '<span class="pill-status status-skipped">↷ Пропущено</span>';
+                else statusBadge = '<span class="pill-status status-pending">⏳ Ожидает</span>';
+
+                const safeFindingId = escapeHtml(item.finding_id);
+                const safeEntityType = escapeHtml(item.entity_type || 'Сущность');
+                const safePlaceholder = escapeHtml(item.placeholder || '');
+                const safeConfidence = escapeHtml(confidence);
+                const safeDocName = escapeHtml(docName);
+                const safeDocRef = escapeHtml(item.document_ref || '');
+                const safePosStr = escapeHtml(posStr);
+
+                card.innerHTML = `
+                    <div>
+                        <div class="card-top">
+                            <div class="card-tags">
+                                <span class="pill-type" style="background:${typeSt.bg};color:${typeSt.text};border-color:${typeSt.border};">
+                                    ${safeEntityType}
+                                </span>
+                                <span class="pill-token">${safePlaceholder}</span>
+                                ${safeConfidence ? `<span style="font-size:11px;color:var(--text-muted);" title="Уверенность распознавания">🎯 ${safeConfidence}</span>` : ''}
+                            </div>
+                            <div>${statusBadge}</div>
+                        </div>
+
+                        <div class="card-meta" style="margin: 8px 0 10px 0;">
+                            <span style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${safeDocRef}">📄 ${safeDocName}</span>
+                            ${safePosStr ? `<span>•</span><span>${safePosStr}</span>` : ''}
+                        </div>
+
+                        <div class="card-context">
+                            ${highlightContext(item.redacted_context, item.placeholder)}
+                        </div>
+                    </div>
+
+                    <div class="card-actions">
+                        <button type="button" class="btn-act-accept">
+                            ✓ Принять
+                        </button>
+                        <button type="button" class="btn-act-reject">
+                            ✕ Отклонить
+                        </button>
+                        <button type="button" class="btn-act-skip">
+                            Пропустить
+                        </button>
+                    </div>
+                `;
+
+                const btnAccept = card.querySelector('.btn-act-accept');
+                const btnReject = card.querySelector('.btn-act-reject');
+                const btnSkip = card.querySelector('.btn-act-skip');
+
+                if (btnAccept) {
+                    btnAccept.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        decide(item.finding_id, 'accepted');
+                    });
+                }
+                if (btnReject) {
+                    btnReject.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        decide(item.finding_id, 'rejected');
+                    });
+                }
+                if (btnSkip) {
+                    btnSkip.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        decide(item.finding_id, 'skipped');
+                    });
+                }
+
+                container.appendChild(card);
+            });
+        }
+
+        function selectCard(index) {
+            state.selectedIndex = index;
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((c, i) => c.classList.toggle('selected', i === index));
+            if (cards[index]) {
+                cards[index].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        async function decide(findingId, status) {
+            const api = window.pywebview && window.pywebview.api;
+            if (api && typeof api.decide_review_finding === 'function') {
+                try {
+                    await api.decide_review_finding(findingId, status, '');
+                } catch(e) {
+                    console.error('decide error:', e);
+                }
+            } else {
+                const it = state.items.find(x => x.finding_id === findingId);
+                if (it) it.status = status;
+            }
+
+            const item = state.items.find(x => x.finding_id === findingId);
+            if (item) {
+                item.status = status;
+                const fStatus = document.getElementById('filter-status').value;
+                if (fStatus === 'pending') {
+                    refreshList(false);
+                    return;
+                }
+            }
+            renderCards();
+        }
+
+        async function batchAcceptFiltered() {
+            const filters = getFilters();
+            if (!confirm('Принять все отфильтрованные сущности?')) return;
+
+            const api = window.pywebview && window.pywebview.api;
+            if (api && typeof api.batch_decide_review_findings === 'function') {
+                try {
+                    await api.batch_decide_review_findings(null, 'accepted', filters.entity_type, filters.search, 0);
+                    await refreshList(true);
+                } catch (e) {
+                    console.error('batch accept error:', e);
+                }
+            } else {
+                state.items.forEach(i => i.status = 'accepted');
+                renderCards();
+            }
+        }
+
+        async function loadMore() {
+            state.offset += state.limit;
+            await refreshList(false);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectCard(Math.min(state.selectedIndex + 1, state.items.length - 1));
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectCard(Math.max(state.selectedIndex - 1, 0));
+            } else if (e.key === 'Enter' || e.key.toLowerCase() === 'a' || e.key.toLowerCase() === 'ф') {
+                if (state.selectedIndex >= 0 && state.items[state.selectedIndex]) {
+                    decide(state.items[state.selectedIndex].finding_id, 'accepted');
+                }
+            } else if (e.key === 'Delete' || e.key.toLowerCase() === 'd' || e.key.toLowerCase() === 'в') {
+                if (state.selectedIndex >= 0 && state.items[state.selectedIndex]) {
+                    decide(state.items[state.selectedIndex].finding_id, 'rejected');
+                }
+            } else if (e.key === ' ' || e.key.toLowerCase() === 's' || e.key.toLowerCase() === 'ы') {
+                if (state.selectedIndex >= 0 && state.items[state.selectedIndex]) {
+                    decide(state.items[state.selectedIndex].finding_id, 'skipped');
+                }
+            }
+        });
+
+        // Mock data generator for standalone viewing
+        function getMockFindings(filters, limit, offset) {
+            const mock = [
+                { id: '1', type: 'ФИО', token: '[ФИО_1]', doc: 'Договор_оказания_услуг.docx', pos: { kind: 'paragraph', index: 3 }, text: 'Генеральный директор ООО «Альфа» [ФИО_1], действующий на основании Устава...', conf: 0.98, status: 'pending' },
+                { id: '2', type: 'Наименование', token: '[Наименование_1]', doc: 'Приложение_1.docx', pos: { kind: 'table_cell', row: 1, column: 2 }, text: 'Заказчик: ООО «[Наименование_1]», ОГРН 1027700132195...', conf: 0.95, status: 'pending' },
+                { id: '3', type: 'Адрес', token: '[Адрес_1]', doc: 'Договор_аренды.docx', pos: { kind: 'paragraph', index: 18 }, text: 'Местонахождение объекта: [Адрес_1], кадастровый номер 77:01:0001001:1234.', conf: 0.92, status: 'pending' },
+                { id: '4', type: 'Дата', token: '[Дата_1]', doc: 'Акт_приема.docx', pos: { kind: 'paragraph', index: 1 }, text: 'Настоящий акт составлен [Дата_1] комиссией в составе...', conf: 0.99, status: 'pending' },
+                { id: '5', type: 'Паспорт', token: '[Паспорт_1]', doc: 'Доверенность.docx', pos: { kind: 'paragraph', index: 5 }, text: 'Паспорт серия и номер: [Паспорт_1], выдан ОВД города Москвы...', conf: 0.96, status: 'pending' },
+                { id: '6', type: 'Р/с', token: '[Р/с_1]', doc: 'Реквизиты.docx', pos: { kind: 'table_cell', row: 4, column: 1 }, text: 'Расчетный счет: [Р/с_1] в ПАО Сбербанк, БИК [БИК_1]...', conf: 0.97, status: 'pending' }
+            ];
+            let filtered = mock;
+            if (filters.entity_type) filtered = filtered.filter(x => x.type === filters.entity_type);
+            if (filters.status) filtered = filtered.filter(x => x.status === filters.status);
+            return {
+                summary: { total: mock.length, pending: mock.length, accepted: 0, rejected: 0 },
+                filtered_summary: { total: filtered.length, pending: filtered.length, accepted: 0, rejected: 0 },
+                items: filtered.slice(offset, offset + limit).map(m => ({
+                    finding_id: m.id,
+                    entity_type: m.type,
+                    placeholder: m.token,
+                    document_ref: m.doc,
+                    position: m.pos,
+                    redacted_context: m.text,
+                    confidence: m.conf,
+                    status: m.status
+                })),
+                entity_types: ['ФИО', 'Наименование', 'Адрес', 'Дата', 'Паспорт', 'Р/с'],
+                total_filtered: filtered.length
+            };
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            refreshList(true);
+        });
+    </script>
+</body>
+</html>

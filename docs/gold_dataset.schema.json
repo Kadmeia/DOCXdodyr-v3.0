@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docxdodyr.local/schemas/legalpullenti-gold-1.0.json",
+  "title": "DOCXdodyr hash-only real gold annotation",
+  "type": "object",
+  "required": ["schema_version", "task_id", "document_id", "source", "span", "status", "annotator"],
+  "properties": {
+    "schema_version": {"enum": ["legalpullenti-gold-1.0", "legalpullenti-gold-queue-1.0"]},
+    "task_id": {"type": "string", "minLength": 1},
+    "document_id": {"type": "string", "minLength": 1},
+    "source": {
+      "type": "object", "required": ["source_sha256", "text_sha256", "provenance"],
+      "properties": {
+        "source_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "text_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "provenance": {
+          "type": "object", "required": ["real", "license", "license_verified", "surface_policy"],
+          "properties": {
+            "real": {"const": true},
+            "source_catalog_id": {"type": "string"},
+            "license": {"type": "string"},
+            "license_verified": {"type": "boolean"},
+            "surface_policy": {"const": "hash_only"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "span": {
+      "type": "object", "required": ["start", "end", "label", "layout"],
+      "properties": {
+        "start": {"type": "integer", "minimum": 0},
+        "end": {"type": "integer", "exclusiveMinimum": 0},
+        "label": {"type": "string"},
+        "layout": {"enum": ["text", "table", "ocr"]},
+        "surface_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "surface_length": {"type": "integer", "minimum": 0}
+      },
+      "not": {"required": ["surface"]},
+      "additionalProperties": false
+    },
+    "candidate_origin": {"type": ["object", "null"]},
+    "status": {"enum": ["pending", "accepted", "rejected"]},
+    "annotator": {"type": ["object", "null"]}
+  },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "accepted"}}}, "then": {"properties": {"annotator": {"type": "object", "required": ["id", "status"]}}}}
+  ],
+  "additionalProperties": false
+}

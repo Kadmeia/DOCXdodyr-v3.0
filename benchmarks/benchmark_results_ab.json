@@ -1,0 +1,837 @@
+{
+  "model_disk_size_mb": 113.3,
+  "ram_start_mb": 30.0,
+  "ram_pullenti_mb": 277.3,
+  "ram_mode_a_mb": 351.8,
+  "ram_mode_b_mb": 755.0,
+  "ram_overhead_mb": 403.2,
+  "mode_a": {
+    "precision": 0.8148,
+    "recall": 0.9103,
+    "f1": 0.8599,
+    "tp": 132,
+    "fp": 30,
+    "fn": 13,
+    "by_type": {
+      "PER": {
+        "tp": 21,
+        "fp": 0,
+        "fn": 0
+      },
+      "ORG": {
+        "tp": 23,
+        "fp": 4,
+        "fn": 0
+      },
+      "ADDRESS": {
+        "tp": 15,
+        "fp": 0,
+        "fn": 0
+      },
+      "INN": {
+        "tp": 15,
+        "fp": 0,
+        "fn": 0
+      },
+      "OGRN": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 8
+      },
+      "BIK": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "RU_ACCOUNT": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "PHONE_NUMBER": {
+        "tp": 8,
+        "fp": 0,
+        "fn": 0
+      },
+      "EMAIL": {
+        "tp": 7,
+        "fp": 0,
+        "fn": 0
+      },
+      "DATE": {
+        "tp": 18,
+        "fp": 0,
+        "fn": 1
+      },
+      "CONTRACT_NUMBER": {
+        "tp": 0,
+        "fp": 6,
+        "fn": 0
+      },
+      "POWER_OF_ATTORNEY_NUMBER": {
+        "tp": 0,
+        "fp": 2,
+        "fn": 0
+      },
+      "KPP": {
+        "tp": 0,
+        "fp": 4,
+        "fn": 0
+      },
+      "RU_CORR_ACCOUNT": {
+        "tp": 0,
+        "fp": 3,
+        "fn": 0
+      },
+      "WEBSITE": {
+        "tp": 1,
+        "fp": 1,
+        "fn": 0
+      },
+      "PASSPORT": {
+        "tp": 6,
+        "fp": 0,
+        "fn": 0
+      },
+      "SNILS": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "BIRTH_DATE": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0
+      },
+      "BIRTH_PLACE": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0
+      },
+      "PASSPORT_DIVISION_CODE": {
+        "tp": 0,
+        "fp": 6,
+        "fn": 0
+      },
+      "COURT_CASE_NUMBER": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "OGRNIP": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 3
+      },
+      "BANK_CARD": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1
+      },
+      "CADASTRAL_NUMBER": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0
+      },
+      "OMS_POLICY": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0
+      }
+    },
+    "doc_times": [
+      0.48031759999867063,
+      0.24924399999872549,
+      0.14311829999496695,
+      0.16315279999980703,
+      0.19001009999919916,
+      0.18647539999801666,
+      0.13392320000275504,
+      0.15106090000335826,
+      0.17832869999983814,
+      0.2137810999993235,
+      0.24923379999381723
+    ],
+    "mean_doc_time_ms": 212.6,
+    "total_time_s": 2.339,
+    "false_positives": [
+      {
+        "doc_id": "01_supply_contract",
+        "type": "CONTRACT_NUMBER",
+        "text": "ДП-2025/11",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "01_supply_contract",
+        "type": "POWER_OF_ATTORNEY_NUMBER",
+        "text": "45/Д",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "01_supply_contract",
+        "type": "ORG",
+        "text": "ПромТехСнаб",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "01_supply_contract",
+        "type": "KPP",
+        "text": "770501001",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "01_supply_contract",
+        "type": "RU_CORR_ACCOUNT",
+        "text": "30101810400000000225",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "01_supply_contract",
+        "type": "ORG",
+        "text": "Авангард",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "01_supply_contract",
+        "type": "KPP",
+        "text": "780101001",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "01_supply_contract",
+        "type": "RU_CORR_ACCOUNT",
+        "text": "30101810700000000707",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "01_supply_contract",
+        "type": "WEBSITE",
+        "text": "www.zavod-avangard.spb.ru",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "02_power_of_attorney",
+        "type": "POWER_OF_ATTORNEY_NUMBER",
+        "text": "ДОВ-2025/08",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "02_power_of_attorney",
+        "type": "BIRTH_DATE",
+        "text": "14.07.1982",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "02_power_of_attorney",
+        "type": "BIRTH_PLACE",
+        "text": "гор. Горький",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "02_power_of_attorney",
+        "type": "PASSPORT_DIVISION_CODE",
+        "text": "520-003",
+        "source": "rule+pullenti"
+      },
+      {
+        "doc_id": "02_power_of_attorney",
+        "type": "PASSPORT_DIVISION_CODE",
+        "text": "520-004",
+        "source": "rule+pullenti"
+      },
+      {
+        "doc_id": "03_court_claim",
+        "type": "KPP",
+        "text": "771801001",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "03_court_claim",
+        "type": "CONTRACT_NUMBER",
+        "text": "СГ-14",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "04_pre_trial_claim",
+        "type": "CONTRACT_NUMBER",
+        "text": "ТЛ-771",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "04_pre_trial_claim",
+        "type": "PASSPORT_DIVISION_CODE",
+        "text": "150 000",
+        "source": "rule+rule_norm"
+      },
+      {
+        "doc_id": "05_lease_agreement",
+        "type": "CONTRACT_NUMBER",
+        "text": "АР-2025/03",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "05_lease_agreement",
+        "type": "ORG",
+        "text": "Юдино",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "05_lease_agreement",
+        "type": "CADASTRAL_NUMBER",
+        "text": "16:50:010203:456",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "06_services_contract",
+        "type": "CONTRACT_NUMBER",
+        "text": "КУ-89",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "06_services_contract",
+        "type": "ORG",
+        "text": "ОУФМС России по Самарской обл. в Октябрьском районе гор. Самары",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "07_employment_contract",
+        "type": "CONTRACT_NUMBER",
+        "text": "14-ТД",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "07_employment_contract",
+        "type": "PASSPORT_DIVISION_CODE",
+        "text": "542-015",
+        "source": "rule+rule_norm+pullenti"
+      },
+      {
+        "doc_id": "07_employment_contract",
+        "type": "OMS_POLICY",
+        "text": "7750123456789012",
+        "source": "rule+rule_norm+pullenti"
+      },
+      {
+        "doc_id": "09_court_order",
+        "type": "PASSPORT_DIVISION_CODE",
+        "text": "480 000",
+        "source": "rule+rule_norm"
+      },
+      {
+        "doc_id": "10_company_requisites",
+        "type": "KPP",
+        "text": "770301001",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "10_company_requisites",
+        "type": "RU_CORR_ACCOUNT",
+        "text": "30101810200000000593",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "11_mixed_legal_doc",
+        "type": "PASSPORT_DIVISION_CODE",
+        "text": "610-022",
+        "source": "rule+rule_norm+pullenti"
+      }
+    ],
+    "false_negatives": [
+      {
+        "doc_id": "01_supply_contract",
+        "type": "OGRN",
+        "text": "1037800012345"
+      },
+      {
+        "doc_id": "02_power_of_attorney",
+        "type": "DATE",
+        "text": "14.07.1982 года"
+      },
+      {
+        "doc_id": "03_court_claim",
+        "type": "OGRNIP",
+        "text": "315774600123456"
+      },
+      {
+        "doc_id": "03_court_claim",
+        "type": "OGRN",
+        "text": "1107746987654"
+      },
+      {
+        "doc_id": "04_pre_trial_claim",
+        "type": "BANK_CARD",
+        "text": "2200 1234 5678 9010"
+      },
+      {
+        "doc_id": "05_lease_agreement",
+        "type": "OGRN",
+        "text": "1041625498765"
+      },
+      {
+        "doc_id": "05_lease_agreement",
+        "type": "OGRNIP",
+        "text": "320169000123456"
+      },
+      {
+        "doc_id": "06_services_contract",
+        "type": "OGRN",
+        "text": "1086316001234"
+      },
+      {
+        "doc_id": "07_employment_contract",
+        "type": "OGRN",
+        "text": "1155476005544"
+      },
+      {
+        "doc_id": "08_nda_agreement",
+        "type": "OGRN",
+        "text": "1197746123456"
+      },
+      {
+        "doc_id": "09_court_order",
+        "type": "OGRN",
+        "text": "1167847123456"
+      },
+      {
+        "doc_id": "10_company_requisites",
+        "type": "OGRN",
+        "text": "1127746123987"
+      },
+      {
+        "doc_id": "11_mixed_legal_doc",
+        "type": "OGRNIP",
+        "text": "318619600012345"
+      }
+    ]
+  },
+  "mode_b": {
+    "precision": 0.7709,
+    "recall": 0.9517,
+    "f1": 0.8519,
+    "tp": 138,
+    "fp": 41,
+    "fn": 7,
+    "by_type": {
+      "PER": {
+        "tp": 18,
+        "fp": 0,
+        "fn": 3
+      },
+      "ORG": {
+        "tp": 23,
+        "fp": 8,
+        "fn": 0
+      },
+      "ADDRESS": {
+        "tp": 15,
+        "fp": 1,
+        "fn": 0
+      },
+      "INN": {
+        "tp": 15,
+        "fp": 1,
+        "fn": 0
+      },
+      "OGRN": {
+        "tp": 11,
+        "fp": 3,
+        "fn": 0
+      },
+      "BIK": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "RU_ACCOUNT": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0
+      },
+      "PHONE_NUMBER": {
+        "tp": 8,
+        "fp": 0,
+        "fn": 0
+      },
+      "EMAIL": {
+        "tp": 7,
+        "fp": 0,
+        "fn": 0
+      },
+      "DATE": {
+        "tp": 19,
+        "fp": 2,
+        "fn": 0
+      },
+      "CONTRACT_NUMBER": {
+        "tp": 0,
+        "fp": 6,
+        "fn": 0
+      },
+      "POWER_OF_ATTORNEY_NUMBER": {
+        "tp": 0,
+        "fp": 2,
+        "fn": 0
+      },
+      "KPP": {
+        "tp": 0,
+        "fp": 4,
+        "fn": 0
+      },
+      "RU_CORR_ACCOUNT": {
+        "tp": 0,
+        "fp": 3,
+        "fn": 0
+      },
+      "WEBSITE": {
+        "tp": 1,
+        "fp": 1,
+        "fn": 0
+      },
+      "PASSPORT": {
+        "tp": 6,
+        "fp": 1,
+        "fn": 0
+      },
+      "SNILS": {
+        "tp": 3,
+        "fp": 0,
+        "fn": 0
+      },
+      "BIRTH_PLACE": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0
+      },
+      "PASSPORT_DIVISION_CODE": {
+        "tp": 0,
+        "fp": 6,
+        "fn": 0
+      },
+      "COURT_CASE_NUMBER": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "OGRNIP": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 3
+      },
+      "BANK_CARD": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1
+      },
+      "CADASTRAL_NUMBER": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0
+      },
+      "OMS_POLICY": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0
+      }
+    },
+    "doc_times": [
+      0.3265873000054853,
+      0.261372199995094,
+      0.18797060000360943,
+      0.2054820000048494,
+      0.23787649999576388,
+      0.1948558999938541,
+      0.17517539999971632,
+      0.18562699999893084,
+      0.2232055000058608,
+      0.26383720000012545,
+      0.30315020000125514
+    ],
+    "mean_doc_time_ms": 233.19,
+    "total_time_s": 2.565,
+    "false_positives": [
+      {
+        "doc_id": "01_supply_contract",
+        "type": "CONTRACT_NUMBER",
+        "text": "ДП-2025/11",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "01_supply_contract",
+        "type": "POWER_OF_ATTORNEY_NUMBER",
+        "text": "45/Д",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "01_supply_contract",
+        "type": "ORG",
+        "text": "ООО «ПромТехСнаб»",
+        "source": "llaim_ner"
+      },
+      {
+        "doc_id": "01_supply_contract",
+        "type": "KPP",
+        "text": "770501001",
+        "source": "pullenti+llaim_ner"
+      },
+      {
+        "doc_id": "01_supply_contract",
+        "type": "RU_CORR_ACCOUNT",
+        "text": "30101810400000000225",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "01_supply_contract",
+        "type": "ORG",
+        "text": "ПАО «Авангард»",
+        "source": "llaim_ner"
+      },
+      {
+        "doc_id": "01_supply_contract",
+        "type": "KPP",
+        "text": "780101001",
+        "source": "pullenti+llaim_ner"
+      },
+      {
+        "doc_id": "01_supply_contract",
+        "type": "RU_CORR_ACCOUNT",
+        "text": "30101810700000000707",
+        "source": "pullenti+llaim_ner"
+      },
+      {
+        "doc_id": "01_supply_contract",
+        "type": "WEBSITE",
+        "text": "www.zavod-avangard.spb.ru",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "02_power_of_attorney",
+        "type": "POWER_OF_ATTORNEY_NUMBER",
+        "text": "ДОВ-2025/08",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "02_power_of_attorney",
+        "type": "DATE",
+        "text": "двадцать второе февраля",
+        "source": "llaim_ner"
+      },
+      {
+        "doc_id": "02_power_of_attorney",
+        "type": "DATE",
+        "text": "пятого года",
+        "source": "llaim_ner"
+      },
+      {
+        "doc_id": "02_power_of_attorney",
+        "type": "BIRTH_PLACE",
+        "text": "гор. Горький",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "02_power_of_attorney",
+        "type": "PASSPORT_DIVISION_CODE",
+        "text": "520-003",
+        "source": "rule+pullenti"
+      },
+      {
+        "doc_id": "02_power_of_attorney",
+        "type": "PASSPORT_DIVISION_CODE",
+        "text": "520-004",
+        "source": "rule+pullenti"
+      },
+      {
+        "doc_id": "03_court_claim",
+        "type": "ADDRESS",
+        "text": "115225, г. Москва, ул. Большая Тульская, д. 17",
+        "source": "llaim_ner"
+      },
+      {
+        "doc_id": "03_court_claim",
+        "type": "ORG",
+        "text": "Индивидуальный предприниматель Морозов Игорь Сергеевич",
+        "source": "llaim_ner"
+      },
+      {
+        "doc_id": "03_court_claim",
+        "type": "OGRN",
+        "text": "315774600123456",
+        "source": "llaim_ner"
+      },
+      {
+        "doc_id": "03_court_claim",
+        "type": "KPP",
+        "text": "771801001",
+        "source": "pullenti+llaim_ner"
+      },
+      {
+        "doc_id": "03_court_claim",
+        "type": "CONTRACT_NUMBER",
+        "text": "СГ-14",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "04_pre_trial_claim",
+        "type": "CONTRACT_NUMBER",
+        "text": "ТЛ-771",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "04_pre_trial_claim",
+        "type": "PASSPORT_DIVISION_CODE",
+        "text": "150 000",
+        "source": "rule+rule_norm"
+      },
+      {
+        "doc_id": "04_pre_trial_claim",
+        "type": "PASSPORT",
+        "text": "1234 5678 9010",
+        "source": "llaim_ner"
+      },
+      {
+        "doc_id": "05_lease_agreement",
+        "type": "CONTRACT_NUMBER",
+        "text": "АР-2025/03",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "05_lease_agreement",
+        "type": "ORG",
+        "text": "Индивидуальный предприниматель Сидорова Анна Вячеславовна",
+        "source": "llaim_ner"
+      },
+      {
+        "doc_id": "05_lease_agreement",
+        "type": "OGRN",
+        "text": "320169000123456",
+        "source": "llaim_ner"
+      },
+      {
+        "doc_id": "05_lease_agreement",
+        "type": "ORG",
+        "text": "ОП «Юдино»",
+        "source": "llaim_ner"
+      },
+      {
+        "doc_id": "05_lease_agreement",
+        "type": "CADASTRAL_NUMBER",
+        "text": "16:50:010203:456",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "06_services_contract",
+        "type": "CONTRACT_NUMBER",
+        "text": "КУ-89",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "06_services_contract",
+        "type": "ORG",
+        "text": "ОУФМС России по Самарской обл. в Октябрьском районе гор. Самары",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "07_employment_contract",
+        "type": "CONTRACT_NUMBER",
+        "text": "14-ТД",
+        "source": "pullenti"
+      },
+      {
+        "doc_id": "07_employment_contract",
+        "type": "PASSPORT_DIVISION_CODE",
+        "text": "542-015",
+        "source": "rule+rule_norm+pullenti"
+      },
+      {
+        "doc_id": "07_employment_contract",
+        "type": "OMS_POLICY",
+        "text": "7750123456789012",
+        "source": "rule+rule_norm+pullenti"
+      },
+      {
+        "doc_id": "09_court_order",
+        "type": "INN",
+        "text": "15",
+        "source": "llaim_ner"
+      },
+      {
+        "doc_id": "09_court_order",
+        "type": "ORG",
+        "text": "общества «Балтийский Флот»",
+        "source": "llaim_ner"
+      },
+      {
+        "doc_id": "09_court_order",
+        "type": "PASSPORT_DIVISION_CODE",
+        "text": "480 000",
+        "source": "rule+rule_norm"
+      },
+      {
+        "doc_id": "10_company_requisites",
+        "type": "KPP",
+        "text": "770301001",
+        "source": "pullenti+llaim_ner"
+      },
+      {
+        "doc_id": "10_company_requisites",
+        "type": "RU_CORR_ACCOUNT",
+        "text": "30101810200000000593",
+        "source": "pullenti+llaim_ner"
+      },
+      {
+        "doc_id": "11_mixed_legal_doc",
+        "type": "PASSPORT_DIVISION_CODE",
+        "text": "610-022",
+        "source": "rule+rule_norm+pullenti+llaim_ner"
+      },
+      {
+        "doc_id": "11_mixed_legal_doc",
+        "type": "ORG",
+        "text": "Индивидуальный предприниматель Ковалев Роман Викторович",
+        "source": "llaim_ner"
+      },
+      {
+        "doc_id": "11_mixed_legal_doc",
+        "type": "OGRN",
+        "text": "318619600012345",
+        "source": "llaim_ner"
+      }
+    ],
+    "false_negatives": [
+      {
+        "doc_id": "03_court_claim",
+        "type": "PER",
+        "text": "Морозов Игорь Сергеевич"
+      },
+      {
+        "doc_id": "03_court_claim",
+        "type": "OGRNIP",
+        "text": "315774600123456"
+      },
+      {
+        "doc_id": "04_pre_trial_claim",
+        "type": "BANK_CARD",
+        "text": "2200 1234 5678 9010"
+      },
+      {
+        "doc_id": "05_lease_agreement",
+        "type": "PER",
+        "text": "Сидорова Анна Вячеславовна"
+      },
+      {
+        "doc_id": "05_lease_agreement",
+        "type": "OGRNIP",
+        "text": "320169000123456"
+      },
+      {
+        "doc_id": "11_mixed_legal_doc",
+        "type": "PER",
+        "text": "Ковалев Роман Викторович"
+      },
+      {
+        "doc_id": "11_mixed_legal_doc",
+        "type": "OGRNIP",
+        "text": "318619600012345"
+      }
+    ]
+  }
+}

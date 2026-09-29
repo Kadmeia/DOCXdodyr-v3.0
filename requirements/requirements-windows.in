@@ -1,0 +1,4 @@
+# DOCXдодыр — Платформенные зависимости для Windows
+-r requirements-core.in
+
+docx2pdf>=0.1.8; sys_platform == "win32"

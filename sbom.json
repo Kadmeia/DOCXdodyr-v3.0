@@ -1,0 +1,205 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:3e2c709f-1c78-433b-b5db-d8a77b1e44b0",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-09-03T11:35:00+03:00",
+    "tools": [
+      {
+        "vendor": "DOCXdodyr Contributors",
+        "name": "release-builder",
+        "version": "2.2.0"
+      }
+    ],
+    "component": {
+      "type": "application",
+      "bom-ref": "docxdodyr@3.0.1",
+      "name": "DOCXdodyr",
+      "version": "3.0.1",
+      "description": "Локальное приложение для интеллектуального обезличивания документов, очистки метаданных и правового анализа",
+      "licenses": [
+        {
+          "license": {
+            "name": "Freeware (EULA)"
+          }
+        }
+      ],
+      "purl": "pkg:generic/docxdodyr@3.0.1"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/python-docx@1.2.0",
+      "name": "python-docx",
+      "version": "1.2.0",
+      "description": "Create and update Microsoft Word .docx files",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:pypi/python-docx@1.2.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/openpyxl@3.1.5",
+      "name": "openpyxl",
+      "version": "3.1.5",
+      "description": "A Python library to read/write Excel 2010 xlsx/xlsm files",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:pypi/openpyxl@3.1.5"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/pywebview@6.2.1",
+      "name": "pywebview",
+      "version": "6.2.1",
+      "description": "Build GUI for your Python program with JavaScript, HTML, and CSS",
+      "licenses": [{"license": {"id": "BSD-3-Clause"}}],
+      "purl": "pkg:pypi/pywebview@6.2.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/pymorphy3@2.0.6",
+      "name": "pymorphy3",
+      "version": "2.0.6",
+      "description": "Morphological analyzer (POS tagger + inflection engine) for Russian language",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:pypi/pymorphy3@2.0.6"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/pullentipython@0.1",
+      "name": "PullentiPython",
+      "version": "0.1",
+      "description": "Linguistic SDK for entity extraction and semantic analysis",
+      "licenses": [{"license": {"id": "Apache-2.0"}}],
+      "purl": "pkg:pypi/pullentipython@0.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/pypdf@6.12.2",
+      "name": "pypdf",
+      "version": "6.12.2",
+      "description": "A pure-python PDF library capable of splitting, merging, cropping, and transforming PDF files",
+      "licenses": [{"license": {"id": "BSD-3-Clause"}}],
+      "purl": "pkg:pypi/pypdf@6.12.2"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/cryptography@50.0.0",
+      "name": "cryptography",
+      "version": "50.0.0",
+      "description": "cryptography is a package which provides cryptographic recipes and primitives to Python developers",
+      "licenses": [{"license": {"id": "Apache-2.0"}}],
+      "purl": "pkg:pypi/cryptography@50.0.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/keyring@25.7.0",
+      "name": "keyring",
+      "version": "25.7.0",
+      "description": "Store and access your passwords safely",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:pypi/keyring@25.7.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/platformdirs@4.4.0",
+      "name": "platformdirs",
+      "version": "4.4.0",
+      "description": "A small Python module for determining appropriate platform-specific directories",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:pypi/platformdirs@4.4.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/pillow@11.3.0",
+      "name": "pillow",
+      "version": "11.3.0",
+      "description": "Python Imaging Library (Fork)",
+      "licenses": [{"license": {"id": "HPND"}}],
+      "purl": "pkg:pypi/pillow@11.3.0"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/pytesseract@0.3.13",
+      "name": "pytesseract",
+      "version": "0.3.13",
+      "description": "Python wrapper for the local Tesseract OCR engine",
+      "licenses": [{"license": {"id": "Apache-2.0"}}],
+      "purl": "pkg:pypi/pytesseract@0.3.13"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/pymupdf@1.26.5",
+      "name": "pymupdf",
+      "version": "1.26.5",
+      "description": "A high-performance Python library for data extraction, analysis, conversion & manipulation of PDF (and other) documents",
+      "licenses": [{"license": {"id": "AGPL-3.0-or-later"}}],
+      "purl": "pkg:pypi/pymupdf@1.26.5"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/phonenumbers@9.0.31",
+      "name": "phonenumbers",
+      "version": "9.0.31",
+      "description": "Python version of Google's common library for parsing, formatting, storing and validating international phone numbers",
+      "licenses": [{"license": {"id": "Apache-2.0"}}],
+      "purl": "pkg:pypi/phonenumbers@9.0.31"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/fpdf2@2.8.4",
+      "name": "fpdf2",
+      "version": "2.8.4",
+      "description": "Simple, creative and versatile PDF generation for Python",
+      "licenses": [{"license": {"id": "LGPL-3.0-or-later"}}],
+      "purl": "pkg:pypi/fpdf2@2.8.4"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/pyobjc-core@11.1",
+      "name": "pyobjc-core",
+      "version": "11.1",
+      "description": "Bridge between Python and Objective-C (core framework)",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:pypi/pyobjc-core@11.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/pyobjc-framework-cocoa@11.1",
+      "name": "pyobjc-framework-Cocoa",
+      "version": "11.1",
+      "description": "Wrappers for the Cocoa frameworks on macOS",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:pypi/pyobjc-framework-cocoa@11.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/pyobjc-framework-quartz@11.1",
+      "name": "pyobjc-framework-Quartz",
+      "version": "11.1",
+      "description": "Wrappers for the Quartz frameworks on macOS",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:pypi/pyobjc-framework-quartz@11.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/pyobjc-framework-vision@11.1",
+      "name": "pyobjc-framework-Vision",
+      "version": "11.1",
+      "description": "Wrappers for the Vision framework on macOS",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:pypi/pyobjc-framework-vision@11.1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/docx2pdf@0.1.8",
+      "name": "docx2pdf",
+      "version": "0.1.8",
+      "description": "Convert docx to pdf on Windows or macOS directly using Microsoft Word",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:pypi/docx2pdf@0.1.8"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "DOCXдодыр: Запустить приложение",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/main.py",
+      "console": "integratedTerminal",
+      "python": "${workspaceFolder}/venv/bin/python",
+      "windows": {
+        "python": "${workspaceFolder}/venv/Scripts/python.exe"
+      }
+    }
+  ]
+}

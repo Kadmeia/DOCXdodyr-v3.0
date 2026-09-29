@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "name": "DOCXдодыр Antigravity local regression kit",
+  "offline_by_default": true,
+  "real_model_weights": false,
+  "scenarios": [
+    {"id": "ui.launch_theme_preflight", "kind": "ui", "timeout_seconds": 30, "pytest": "tests/antigravity_regression/test_ui_service_scenarios.py::test_launch_theme_and_preflight_controls"},
+    {"id": "ui.files_folders_restore_dropzones", "kind": "ui", "timeout_seconds": 30, "pytest": "tests/antigravity_regression/test_ui_service_scenarios.py::test_files_folder_and_restore_dropzones"},
+    {"id": "ui.review_filters_navigation_batch", "kind": "ui", "timeout_seconds": 30, "pytest": "tests/antigravity_regression/test_ui_service_scenarios.py::test_review_filter_navigation_and_batch_action"},
+    {"id": "ui.hidden_content_choices", "kind": "ui", "timeout_seconds": 45, "pytest": "tests/antigravity_regression/test_ui_service_scenarios.py::test_hidden_content_choices_require_confirmation_and_are_aggregate_only"},
+    {"id": "ui.restore_auto_decoder", "kind": "ui", "timeout_seconds": 30, "pytest": "tests/antigravity_regression/test_ui_service_scenarios.py::test_restore_auto_decoder_finds_nearby_decoder"},
+    {"id": "ui.irreversible_pdf", "kind": "ui", "timeout_seconds": 45, "pytest": "tests/antigravity_regression/test_ui_service_scenarios.py::test_irreversible_pdf_is_explicit_and_text_layer_is_removed"},
+    {"id": "ui.qwen_offline", "kind": "ui", "timeout_seconds": 30, "pytest": "tests/antigravity_regression/test_ui_service_scenarios.py::test_qwen_offline_preflight_never_loads_missing_weights"},
+    {"id": "ui.comprehensive_webview", "kind": "ui", "timeout_seconds": 60, "pytest": "tests/test_ui_comprehensive_webview.py::test_ui_comprehensive_webview"},
+    {"id": "backend.public_contract_inventory", "kind": "backend", "timeout_seconds": 30, "pytest": "tests/antigravity_regression/test_backend_contract.py::test_public_backend_contract_inventory_is_callable"},
+    {"id": "backend.settings_and_qwen_contract", "kind": "backend", "timeout_seconds": 30, "pytest": "tests/antigravity_regression/test_backend_contract.py::test_settings_lists_placeholders_status_and_qwen_contract"},
+    {"id": "backend.review_error_privacy", "kind": "backend", "timeout_seconds": 45, "pytest": "tests/antigravity_regression/test_backend_contract.py::test_review_contract_validates_errors_and_preserves_no_pii"},
+    {"id": "backend.restart_concurrency_privacy", "kind": "backend", "timeout_seconds": 45, "pytest": "tests/antigravity_regression/test_backend_contract.py::test_restart_safe_private_context_and_audit_do_not_leak_pii tests/antigravity_regression/test_backend_contract.py::test_restart_without_private_context_fails_closed tests/antigravity_regression/test_backend_contract.py::test_concurrent_read_only_calls_are_stable"},
+    {"id": "backend.error_progress_contract", "kind": "backend", "timeout_seconds": 30, "pytest": "tests/antigravity_regression/test_backend_contract.py::test_hidden_policy_error_branches_and_stale_token tests/antigravity_regression/test_backend_contract.py::test_progress_and_no_pii_logs tests/antigravity_regression/test_backend_contract.py::test_low_level_ui_bridge_and_text_helpers_have_stable_contract tests/antigravity_regression/test_backend_contract.py::test_public_error_branches_are_safe"},
+    {"id": "kit.runner_self_tests", "kind": "kit", "timeout_seconds": 30, "pytest": "tests/antigravity_regression/test_runner.py"}
+  ]
+}

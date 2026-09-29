@@ -1,0 +1,3 @@
+include pyproject.toml setup.py
+recursive-include pullenti_legal README.md LICENSE
+recursive-include docs PULLENTI_LEGAL_PACKAGING.md

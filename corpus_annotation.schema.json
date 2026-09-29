@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docxdodyr.local/schemas/legalpullenti-span-1.0.json",
+  "title": "LegalPullenti corpus candidate record",
+  "type": "object",
+  "required": ["schema_version", "document_id", "source", "text_length", "text_sha256", "annotations", "safety"],
+  "properties": {
+    "schema_version": {"const": "legalpullenti-span-1.0"},
+    "document_id": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string"},
+    "source": {
+      "type": "object",
+      "required": ["path", "kind", "encoding", "size_bytes", "sha256"],
+      "properties": {
+        "path": {"type": "string"},
+        "kind": {"enum": ["extracted_text", "xml_plain_document"]},
+        "encoding": {"type": "string"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "modified_at": {"type": "string"},
+        "extractor": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "text_length": {"type": "integer", "minimum": 0},
+    "text_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "annotation_count": {"type": "integer", "minimum": 0},
+    "analysis_scope": {"type": "string"},
+    "analysis_warning": {"type": "string"},
+    "annotations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "start", "end", "label", "detectors", "status", "surface_sha256", "surface_length", "grammar_profile"],
+        "properties": {
+          "id": {"type": "string"},
+          "start": {"type": "integer", "minimum": 0},
+          "end": {"type": "integer", "exclusiveMinimum": 0},
+          "label": {"type": "string"},
+          "detectors": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+          "status": {"enum": ["candidate", "accepted", "rejected"]},
+          "surface_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "surface_length": {"type": "integer", "minimum": 1},
+          "surface": {"type": "string"},
+          "grammar_profile": {"type": "object"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "safety": {
+      "type": "object",
+      "required": ["surface_policy", "masking_integrity_checked", "masked_text_sha256", "masking_integrity_ok", "residual_candidate_scan", "leaked_surface_ids"],
+      "properties": {
+        "surface_policy": {"enum": ["hash_only", "included"]},
+        "masking_integrity_checked": {"const": true},
+        "masked_text_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "masking_integrity_ok": {"type": "boolean"},
+        "residual_candidate_scan": {
+          "type": "object",
+          "required": ["performed", "candidate_count", "is_evidence_of_absence"],
+          "properties": {
+            "performed": {"type": "boolean"},
+            "candidate_count": {"type": ["integer", "null"], "minimum": 0},
+            "is_evidence_of_absence": {"const": false}
+          },
+          "additionalProperties": false
+        },
+        "analysis_scope": {"type": "string"},
+        "warning": {"type": "string"},
+        "leaked_surface_ids": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

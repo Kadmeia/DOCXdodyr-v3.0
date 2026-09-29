@@ -1,0 +1,79 @@
+name: CI Baseline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Test & Security Baseline (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.11"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Verify Python runtime
+        run: python -c "import sys; assert sys.version_info[:2] == (3, 11), sys.version"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install pip==26.2.1 setuptools==80.9.0 wheel==0.45.1
+          python -m pip install -r requirements/requirements-core.txt -r requirements/requirements-dev.txt
+
+      - name: Install platform-specific requirements (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          python -m pip install -r requirements/requirements-macos.txt
+
+      - name: Install platform-specific requirements (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          python -m pip install -r requirements/requirements-windows.txt
+
+      - name: Check dependency consistency
+        run: python -m pip check
+
+      - name: Check public source tree and credential patterns
+        run: |
+          python scripts/check_public_tree.py
+          python -c "from scripts.scan_release_sources import scan; report = scan(); hits = [item for item in report['findings'] if not item['rule'].startswith('personal-')]; print('Credential candidates:', len(hits), 'Unscanned files:', len(report['skipped'])); assert not hits"
+
+      - name: Run offline pytest suite
+        env:
+          DOCXDODYR_TEST_KEYRING: "1"
+          PYTHONUTF8: "1"
+        run: |
+          python -m pytest --verbose -ra
+
+      - name: Verify working tree cleanliness (no test artefacts)
+        shell: bash
+        run: |
+          STATUS="$(git status --porcelain)"
+          if [ -n "$STATUS" ]; then
+            echo "Working tree has untracked or modified files after test run:"
+            echo "$STATUS"
+            exit 1
+          fi

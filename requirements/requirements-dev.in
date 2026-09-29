@@ -1,0 +1,12 @@
+# DOCXдодыр — Инструменты разработки и тестирования (Dev)
+-r requirements-core.in
+
+pytest>=8.0.0,<9.0.0
+pytest-mock>=3.14.0,<4.0.0
+build>=1.0.0,<2.0.0
+pip-tools>=7.0.0,<8.0.0
+pyinstaller>=6.0.0,<7.0.0
+psutil>=5.9.0,<8.0.0
+
+# Workflow contract tests parse GitHub Actions YAML.
+PyYAML>=6.0,<7.0

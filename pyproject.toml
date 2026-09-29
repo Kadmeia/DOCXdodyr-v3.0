@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "docxdodyr-pullenti-legal"
+version = "0.1.0"
+description = "Context-aware Russian legal identifier cartridge for PullentiPython"
+readme = "pullenti_legal/README.md"
+requires-python = ">=3.11,<3.12"
+license = {file = "pullenti_legal/LICENSE"}
+authors = [{name = "DOCXdodyr contributors"}]
+keywords = ["pullenti", "ner", "privacy", "legal", "russian"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Legal Industry",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Text Processing :: Linguistic",
+]
+dependencies = ["PullentiPython>=0.1,<0.2"]
+
+[project.urls]
+Homepage = "https://github.com/ssharkov03/pullenti"
+Repository = "https://github.com/ssharkov03/pullenti"
+Documentation = "https://github.com/ssharkov03/pullenti"
+
+[project.entry-points."pullenti.cartridges"]
+legal = "pullenti_legal:initialize"
+
+[project.optional-dependencies]
+test = ["pytest>=7,<9", "build>=1.0"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["pullenti_legal*"]
+
+[tool.setuptools.package-data]
+pullenti_legal = ["README.md", "LICENSE"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-ra --strict-markers"
+norecursedirs = [".git", ".antigravity", "scratch", "dist", "build", "venv", ".work_contract_2026", "tools", "scripts"]
+

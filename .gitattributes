@@ -1,0 +1,14 @@
+# Source archives must not ship private handoffs, backups or unverified corpora.
+# export-ignore affects git archive only; it does NOT purge Git history/clones.
+/1 export-ignore
+/.antigravity export-ignore
+/.agents export-ignore
+/.release-audit export-ignore
+/scratch export-ignore
+/artifacts export-ignore
+/tests/source_files export-ignore
+/tests/test_data export-ignore
+/tests/run_auto_tests.py export-ignore
+/DOCXDODYR_ANTIGRAVITY_38_FLASH_HANDOFF.md export-ignore
+/ANTIGRAVITY_IMPROVEMENT_INSTRUCTION.md export-ignore
+/docs/ANTIGRAVITY_RELEASE_WORKFLOW.md export-ignore

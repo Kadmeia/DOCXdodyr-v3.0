@@ -1,0 +1,19 @@
+# DOCXдодыр — Базовые зависимости ядра (Core)
+# Поддерживаются на всех платформах (macOS, Windows, Linux)
+
+python-docx>=0.8.11,<2.0.0
+openpyxl>=3.1.2,<4.0.0
+pywebview>=4.4.1,<7.0.0
+pymorphy3>=2.0.1,<3.0.0
+PullentiPython>=0.1,<0.2
+pypdf>=4.0.0,<7.0.0
+cryptography>=42.0.0,<52.0.0
+keyring>=24.0.0,<27.0.0
+platformdirs>=4.0.0,<5.0.0
+pillow>=10.0.0,<12.0.0
+pymupdf>=1.23.0,<2.0.0
+phonenumbers>=8.13.0,<10.0.0
+fpdf2>=2.7.0,<3.0.0
+
+# PullentiPython 0.1 imports pkg_resources at runtime.
+setuptools==80.9.0

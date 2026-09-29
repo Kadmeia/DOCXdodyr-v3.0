@@ -1,0 +1,1650 @@
+<!DOCTYPE html>
+<html lang="ru" class="overflow-hidden">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOCXдодыр v3.0</title>
+    <!-- Стили собраны локально: интерфейс не зависит от CDN и работает офлайн. -->
+    <link href="tailwind.generated.css" rel="stylesheet">
+    <style>
+        .transition-all { transition: all 0.2s ease-in-out; }
+
+        /* Локальные улучшения поверх Tailwind в исходной сине-фиолетовой палитре. */
+        :root { color-scheme: light; }
+        html.dark { color-scheme: dark; }
+        #bug-report-email { color: #0f172a; }
+        html.dark #bug-report-email { color: #7dd3fc; }
+        button, a, select, input { -webkit-tap-highlight-color: transparent; }
+        button:focus-visible, a:focus-visible, select:focus-visible,
+        input:focus-visible, textarea:focus-visible {
+            outline: 2px solid #818cf8;
+            outline-offset: 2px;
+        }
+        .widget-card {
+            min-width: 0;
+            border: 1px solid #e2e8f0;
+            background: rgba(248, 250, 252, 0.72);
+            border-radius: 0.75rem;
+            padding: 0.75rem 0.875rem;
+            transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+        }
+        .widget-card:hover { border-color: rgba(99, 102, 241, 0.45); transform: translateY(-1px); }
+        html.dark .widget-card { border-color: #1e293b; background: rgba(15, 23, 42, 0.62); }
+        html.dark .widget-card:hover { border-color: rgba(129, 140, 248, 0.55); }
+        .widget-label { display: block; color: #64748b; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+        html.dark .widget-label { color: #94a3b8; }
+        .widget-value { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #1e293b; font-size: 0.86rem; font-weight: 600; margin-top: 0.25rem; }
+        html.dark .widget-value { color: #e2e8f0; }
+        .widget-note { display: block; color: #64748b; font-size: 0.72rem; margin-top: 0.15rem; }
+        html.dark .widget-note { color: #94a3b8; }
+        .theme-control button[aria-pressed="true"] { background-color: #ffffff; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12); color: #0f172a; }
+        html.dark .theme-control button[aria-pressed="true"] { background-color: #334155; color: #f8fafc; }
+        @media (max-width: 760px) {
+            .app-header { align-items: flex-start; gap: 0.75rem; }
+            .header-actions { flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; }
+            .mode-tabs { order: 3; width: 100%; }
+            .mode-tabs button { flex: 1; padding-left: 0.5rem; padding-right: 0.5rem; }
+            .app-footer { align-items: flex-start; flex-direction: column; gap: 0.75rem; }
+            .footer-links { flex-wrap: wrap; row-gap: 0.5rem; }
+        }
+        
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #3b82f6;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #3b82f6;
+        }
+        .toggle-checkbox:checked + .toggle-label:after {
+            transform: translateX(100%);
+            border-color: white;
+        }
+        
+        .toggle-checkbox.emerald-toggle:checked {
+            border-color: #10b981;
+        }
+        .toggle-checkbox.emerald-toggle:checked + .toggle-label {
+            background-color: #10b981;
+        }
+        
+        .toggle-label {
+            width: 44px;
+            height: 24px;
+            background-color: #e2e8f0;
+            border-radius: 9999px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .toggle-label:after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border-radius: 50%;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+
+        .drag-over {
+            border-color: #3b82f6 !important;
+            background-color: #eff6ff !important;
+        }
+        .drag-over-emerald {
+            border-color: #10b981 !important;
+            background-color: rgba(16, 185, 129, 0.05) !important;
+        }
+
+        /* ========================================================
+           ВАРИАНТ 3: Split-View (Master-Detail) — Поддержка тем (Светлая / Тёмная)
+        ======================================================== */
+        /* Светлая тема по умолчанию (если html не имеет класса .dark) */
+        #placeholder-settings-modal {
+            --bg-modal: #ffffff;
+            --bg-surface: #f8fafc;
+            --bg-surface-hover: #f1f5f9;
+            --bg-box: #ffffff;
+            --border: #cbd5e1;
+            --border-focus: #3b82f6;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --accent: #10b981;
+            --accent-hover: #059669;
+            --tag-bg: #e0f2fe;
+            --tag-color: #0284c7;
+            --tag-border: rgba(2, 132, 199, 0.35);
+            --danger: #ef4444;
+            --selected-bg: #eff6ff;
+            --sandbox-bg: #f8fafc;
+            --sandbox-border: #cbd5e1;
+            --sandbox-res-bg: rgba(16, 185, 129, 0.08);
+            --sandbox-res-border: rgba(16, 185, 129, 0.3);
+            --controls-bg: #f8fafc;
+            --chips-bg: #f1f5f9;
+            --pill-bg: #ecfdf5;
+            --pill-color: #047857;
+            --pill-border: #6ee7b7;
+            --pill-inactive-bg: #f1f5f9;
+            --pill-inactive-color: #64748b;
+            --pill-inactive-border: #cbd5e1;
+            --scrollbar-thumb: #94a3b8;
+            --scrollbar-thumb-hover: #64748b;
+
+            width: 100%;
+            max-width: 960px;
+            height: 90vh;
+            max-height: 640px;
+            background: var(--bg-modal);
+            border: 1.5px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            color: var(--text-main);
+            box-sizing: border-box;
+            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+        }
+
+        /* Тёмная тема (html.dark) — фирменный Вариант №3 */
+        html.dark #placeholder-settings-modal {
+            --bg-modal: #131b2e;
+            --bg-surface: #1a243a;
+            --bg-surface-hover: #22304d;
+            --bg-box: #0a0e17;
+            --border: #263550;
+            --border-focus: #3b82f6;
+            --text-main: #f8fafc;
+            --text-muted: #8e9bb0;
+            --accent: #10b981;
+            --accent-hover: #059669;
+            --tag-bg: #0c4a6e;
+            --tag-color: #38bdf8;
+            --tag-border: rgba(56, 189, 248, 0.2);
+            --danger: #f87171;
+            --selected-bg: #1e2c48;
+            --sandbox-bg: rgba(255, 255, 255, 0.03);
+            --sandbox-border: rgba(255, 255, 255, 0.04);
+            --sandbox-res-bg: rgba(16, 185, 129, 0.08);
+            --sandbox-res-border: rgba(16, 185, 129, 0.2);
+            --controls-bg: rgba(10, 14, 23, 0.4);
+            --chips-bg: rgba(10, 14, 23, 0.25);
+            --pill-bg: #064e3b;
+            --pill-color: #34d399;
+            --pill-border: #059669;
+            --pill-inactive-bg: #1e293b;
+            --pill-inactive-color: #94a3b8;
+            --pill-inactive-border: #334155;
+            --scrollbar-thumb: #263550;
+            --scrollbar-thumb-hover: #3b4d70;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+        }
+
+        #placeholder-settings-overlay {
+            background-color: rgba(15, 23, 42, 0.45);
+        }
+        html.dark #placeholder-settings-overlay {
+            background-color: rgba(2, 6, 23, 0.75);
+        }
+
+        #placeholder-settings-modal .modal-header {
+            padding: 20px 28px 14px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            background: var(--bg-modal);
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        #placeholder-settings-modal .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        #placeholder-settings-modal .modal-title {
+            font-size: 19px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-main);
+        }
+        #placeholder-settings-modal .counter-pill {
+            font-size: 12px;
+            font-weight: 600;
+            background: var(--pill-bg);
+            color: var(--pill-color);
+            border: 1px solid var(--pill-border);
+            padding: 2px 10px;
+            border-radius: 20px;
+            transition: all 0.2s;
+        }
+        #placeholder-settings-modal .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 20px;
+            cursor: pointer;
+            line-height: 1;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: all 0.15s;
+        }
+        #placeholder-settings-modal .close-btn:hover {
+            color: var(--text-main);
+            background: var(--bg-surface-hover);
+        }
+        #placeholder-settings-modal .modal-subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        #placeholder-settings-modal .modal-controls {
+            padding: 12px 28px;
+            background: var(--controls-bg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            flex-shrink: 0;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        #placeholder-settings-modal .format-selector {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        #placeholder-settings-modal .format-selector label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            color: var(--text-muted);
+            user-select: none;
+            font-size: 13px;
+        }
+        #placeholder-settings-modal .format-selector input[type="radio"] {
+            accent-color: var(--accent);
+            width: 15px;
+            height: 15px;
+            cursor: pointer;
+        }
+        #placeholder-settings-modal .format-selector input[type="radio"]:checked + span {
+            color: var(--text-main);
+            font-weight: 500;
+        }
+        #placeholder-settings-modal .search-input {
+            background: var(--bg-box);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 14px;
+            color: var(--text-main);
+            font-size: 13px;
+            outline: none;
+            width: 240px;
+            transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+        }
+        #placeholder-settings-modal .search-input:focus {
+            border-color: var(--border-focus);
+        }
+
+        #placeholder-settings-modal .section-chips-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 28px;
+            background: var(--chips-bg);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            flex-shrink: 0;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        #placeholder-settings-modal .section-chips-bar::-webkit-scrollbar {
+            display: none;
+        }
+        #placeholder-settings-modal .section-chip {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        #placeholder-settings-modal .section-chip:hover {
+            background: var(--bg-surface-hover);
+            color: var(--text-main);
+        }
+        #placeholder-settings-modal .section-chip.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        #placeholder-settings-modal .modal-content-body {
+            padding: 16px 28px;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-modal);
+            transition: background-color 0.2s ease;
+        }
+
+        #placeholder-settings-modal .split-view {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 18px;
+            height: 100%;
+            min-height: 0;
+        }
+
+        #placeholder-settings-modal .split-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow-y: auto;
+            padding-right: 8px;
+            min-height: 0;
+            height: 100%;
+        }
+
+        #placeholder-settings-modal .legal-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 4px 4px 4px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+        #placeholder-settings-modal .sec-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        #placeholder-settings-modal .sec-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 400;
+        }
+        #placeholder-settings-modal .sec-actions button {
+            color: var(--border-focus);
+            background: none;
+            border: none;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 11px;
+            padding: 0;
+        }
+        #placeholder-settings-modal .sec-actions button:hover {
+            color: #60a5fa;
+        }
+
+        #placeholder-settings-modal .split-list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 11px 14px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+            color: var(--text-main);
+        }
+        #placeholder-settings-modal .split-list-item.has-bottom-badge {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 7px;
+        }
+        #placeholder-settings-modal .split-item-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+        #placeholder-settings-modal .split-item-bottom {
+            display: flex;
+            align-items: center;
+            padding-left: 26px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #placeholder-settings-modal .split-item-bottom .badge-tag {
+            font-size: 10px;
+            white-space: normal;
+            word-break: break-word;
+            line-height: 1.35;
+            max-width: 100%;
+            display: inline-block;
+        }
+        #placeholder-settings-modal .split-list-item:hover {
+            background: var(--bg-surface-hover);
+            border-color: var(--border-focus);
+        }
+        #placeholder-settings-modal .split-list-item.selected {
+            background: var(--selected-bg) !important;
+            border-color: var(--border-focus) !important;
+            box-shadow: 0 0 0 1px var(--border-focus);
+        }
+        #placeholder-settings-modal .split-item-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13.5px;
+            font-weight: 500;
+            min-width: 0;
+            flex: 1;
+        }
+        #placeholder-settings-modal .split-item-left span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #placeholder-settings-modal input[type="checkbox"] {
+            accent-color: var(--accent);
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        #placeholder-settings-modal .badge-tag {
+            background: var(--tag-bg);
+            color: var(--tag-color);
+            font-family: monospace;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--tag-border);
+            flex-shrink: 0;
+        }
+
+        #placeholder-settings-modal .split-preview-pane {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow-y: auto;
+            min-height: 0;
+            height: 100%;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        #placeholder-settings-modal .pane-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        #placeholder-settings-modal .status-pill {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 6px;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+        #placeholder-settings-modal .status-pill.active {
+            background: var(--pill-bg);
+            color: var(--pill-color);
+            border: 1px solid var(--pill-border);
+        }
+        #placeholder-settings-modal .status-pill.inactive {
+            background: var(--pill-inactive-bg);
+            color: var(--pill-inactive-color);
+            border: 1px solid var(--pill-inactive-border);
+        }
+        #placeholder-settings-modal .pane-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.45;
+            margin-bottom: 12px;
+        }
+        #placeholder-settings-modal .preview-sandbox {
+            background: var(--bg-box);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        #placeholder-settings-modal .sandbox-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+        #placeholder-settings-modal .sandbox-value {
+            font-family: monospace;
+            font-size: 12px;
+            margin-bottom: 8px;
+            color: var(--text-main);
+            word-break: break-all;
+            background: var(--sandbox-bg);
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--sandbox-border);
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        #placeholder-settings-modal .sandbox-value.result {
+            color: var(--accent);
+            margin-bottom: 0;
+            font-weight: 600;
+            background: var(--sandbox-res-bg);
+            border-color: var(--sandbox-res-border);
+        }
+        #placeholder-settings-modal .pane-meta {
+            padding: 8px 10px;
+            background: var(--bg-box);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 11px;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        #placeholder-settings-modal .modal-footer {
+            padding: 14px 28px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-modal);
+            flex-shrink: 0;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        #placeholder-settings-modal .footer-status {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        #placeholder-settings-modal .footer-actions {
+            display: flex;
+            gap: 10px;
+        }
+        #placeholder-settings-modal .btn-cancel {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 8px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.15s;
+        }
+        #placeholder-settings-modal .btn-cancel:hover {
+            background: var(--bg-surface-hover);
+        }
+        #placeholder-settings-modal .btn-save {
+            background: var(--accent);
+            border: none;
+            color: #fff;
+            padding: 8px 22px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #placeholder-settings-modal .btn-save:hover {
+            background: var(--accent-hover);
+        }
+
+        #placeholder-settings-modal .split-list::-webkit-scrollbar,
+        #placeholder-settings-modal .split-preview-pane::-webkit-scrollbar {
+            width: 6px;
+        }
+        #placeholder-settings-modal .split-list::-webkit-scrollbar-track,
+        #placeholder-settings-modal .split-preview-pane::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #placeholder-settings-modal .split-list::-webkit-scrollbar-thumb,
+        #placeholder-settings-modal .split-preview-pane::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 4px;
+        }
+        #placeholder-settings-modal .split-list::-webkit-scrollbar-thumb:hover,
+        #placeholder-settings-modal .split-preview-pane::-webkit-scrollbar-thumb:hover {
+            background: var(--scrollbar-thumb-hover);
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        #tab-anonymize { display: flex; }
+        #tab-restore { display: none; }
+        
+        #global-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            z-index: 1000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            box-sizing: border-box;
+        }
+        html.dark #global-overlay {
+            background: rgba(2, 6, 23, 0.75);
+        }
+        #global-overlay.active {
+            display: flex;
+        }
+        #review-modal {
+            background-color: #ffffff !important;
+            transition: max-width 0.2s ease, width 0.2s ease, height 0.2s ease, max-height 0.2s ease;
+        }
+        html.dark #review-modal {
+            background-color: #131b2e !important;
+        }
+        #review-modal.is-maximized {
+            max-width: calc(100vw - 32px) !important;
+            width: calc(100vw - 32px) !important;
+            height: calc(100vh - 32px) !important;
+            max-height: none !important;
+        }
+
+        /* ========================================================
+           СВЕТЛАЯ ТЕМА: Чёткие очертания, объём и контрастные границы
+        ======================================================== */
+        html:not(.dark) body {
+            background-color: #f1f5f9 !important;
+        }
+
+        /* Главное окно приложения */
+        html:not(.dark) .app-header {
+            background: #ffffff !important;
+            border-bottom: 1.5px solid #cbd5e1 !important;
+        }
+        html:not(.dark) .app-footer {
+            background: #ffffff !important;
+            border-top: 1.5px solid #cbd5e1 !important;
+        }
+        html:not(.dark) > body > div:last-of-type {
+            border-left: 1.5px solid #cbd5e1 !important;
+            border-right: 1.5px solid #cbd5e1 !important;
+            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04) !important;
+        }
+
+        /* Карточки секций на вкладках */
+        html:not(.dark) #tab-anonymize > div,
+        html:not(.dark) #tab-restore > div {
+            background-color: #ffffff !important;
+            border: 1.5px solid #cbd5e1 !important;
+            box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02) !important;
+        }
+
+        /* Дропзоны для перетаскивания файлов */
+        html:not(.dark) #dropzone-anonymize > div:last-child,
+        html:not(.dark) #dropzone-restore-doc > div:last-child,
+        html:not(.dark) #dropzone-restore-json > div:last-child {
+            background-color: #f8fafc !important;
+            border: 2px dashed #94a3b8 !important;
+        }
+        html:not(.dark) #dropzone-anonymize:hover > div:last-child {
+            border-color: #3b82f6 !important;
+            background-color: #eff6ff !important;
+        }
+        html:not(.dark) #dropzone-restore-doc:hover > div:last-child,
+        html:not(.dark) #dropzone-restore-json:hover > div:last-child {
+            border-color: #10b981 !important;
+            background-color: #ecfdf5 !important;
+        }
+
+        /* Боковые кнопки настроек и быстрых действий */
+        html:not(.dark) .w-full.md\:w-64 > div:first-child {
+            background-color: #ffffff !important;
+            border: 1.5px solid #cbd5e1 !important;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+        }
+        html:not(.dark) .w-full.md\:w-64 > div:first-child button {
+            border-bottom: 1px solid #e2e8f0;
+        }
+        html:not(.dark) .w-full.md\:w-64 > div:first-child button:last-child {
+            border-bottom: none;
+        }
+        html:not(.dark) .w-full.md\:w-64 > div:first-child button:hover {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+        }
+
+        /* Кнопка "Распознавание PDF" */
+        html:not(.dark) button[onclick="runAction('pdf_ocr')"] {
+            background-color: #f8fafc !important;
+            border: 1.5px solid #cbd5e1 !important;
+            color: #334155 !important;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+            transition: all 0.18s ease-in-out !important;
+        }
+        html:not(.dark) button[onclick="runAction('pdf_ocr')"]:hover {
+            background-color: #eef2ff !important;
+            border-color: #818cf8 !important;
+            color: #3730a3 !important;
+            box-shadow: 0 2px 6px rgba(99, 102, 241, 0.12) !important;
+        }
+
+        /* Кнопки "Проверить находки", "Проверить скрытые данные" и "Сообщить о баге" */
+        html:not(.dark) #btn-review-findings {
+            border: 1.5px solid #93c5fd !important;
+            background-color: #eff6ff !important;
+            color: #1d4ed8 !important;
+            box-shadow: 0 1px 2px rgba(59, 130, 246, 0.08) !important;
+            transition: all 0.18s ease-in-out !important;
+        }
+        html:not(.dark) #btn-review-findings:hover {
+            background-color: #dbeafe !important;
+            border-color: #3b82f6 !important;
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.16) !important;
+        }
+        html:not(.dark) #btn-hidden-data {
+            border: 1.5px solid #fcd34d !important;
+            background-color: #fffbeb !important;
+            color: #92400e !important;
+            box-shadow: 0 1px 2px rgba(245, 158, 11, 0.08) !important;
+            transition: all 0.18s ease-in-out !important;
+        }
+        html:not(.dark) #btn-hidden-data:hover {
+            background-color: #fef3c7 !important;
+            border-color: #f59e0b !important;
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.16) !important;
+        }
+        html:not(.dark) #btn-report-bug {
+            border: 1.5px solid #fecdd3 !important;
+            background-color: #fff1f2 !important;
+            color: #9f1239 !important;
+            box-shadow: 0 1px 2px rgba(244, 63, 94, 0.08) !important;
+            transition: all 0.18s ease-in-out !important;
+        }
+        html:not(.dark) #btn-report-bug:hover {
+            background-color: #ffe4e6 !important;
+            border-color: #f43f5e !important;
+            color: #881337 !important;
+            box-shadow: 0 2px 6px rgba(244, 63, 94, 0.16) !important;
+        }
+
+        /* Блок «Форматы сохранения»: четкие границы и подсветка при наведении */
+        html:not(.dark) .save-formats-box {
+            border: 1.5px solid #cbd5e1 !important;
+            box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05) !important;
+        }
+        html:not(.dark) .save-format-item {
+            background-color: #ffffff !important;
+            border: 1.5px solid #cbd5e1 !important;
+            border-radius: 0.625rem !important;
+            padding: 0.6rem 0.85rem !important;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+            transition: all 0.18s ease-in-out !important;
+        }
+        html:not(.dark) .save-format-item:hover {
+            background-color: #f0fdf4 !important;
+            border-color: #10b981 !important;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.14) !important;
+        }
+        html.dark .save-format-item {
+            background-color: rgba(15, 23, 42, 0.4);
+            border: 1px solid #334155;
+            border-radius: 0.625rem;
+            padding: 0.6rem 0.85rem;
+            transition: all 0.18s ease-in-out;
+        }
+        html.dark .save-format-item:hover {
+            background-color: rgba(30, 41, 59, 0.7);
+            border-color: #10b981;
+        }
+
+        /* Стиль для quick-mode (фоновое мини-окно прогресса из контекстного меню Проводника) */
+        body.quick-mode #app-header,
+        body.quick-mode #app-footer,
+        body.quick-mode #tab-anonymize,
+        body.quick-mode #tab-restore {
+            display: none !important;
+        }
+        body.quick-mode {
+            background: #f8fafc !important;
+        }
+        html.dark body.quick-mode {
+            background: #020617 !important;
+        }
+        body.quick-mode #global-overlay {
+            display: flex !important;
+            opacity: 1 !important;
+            background: transparent !important;
+            position: fixed !important;
+            inset: 0 !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        body.quick-mode #global-overlay > div {
+            border: 1.5px solid #cbd5e1 !important;
+            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.14) !important;
+            max-width: 90% !important;
+            padding: 1.75rem !important;
+        }
+        html.dark body.quick-mode #global-overlay > div {
+            border-color: #334155 !important;
+        }
+
+        /* Переключатели тумблеров (Toggles) в светлой теме */
+        html:not(.dark) .toggle-label {
+            background-color: #cbd5e1 !important;
+            border: 1px solid #94a3b8 !important;
+        }
+        html:not(.dark) .toggle-checkbox:checked + .toggle-label {
+            background-color: #2563eb !important;
+            border-color: #1d4ed8 !important;
+        }
+        html:not(.dark) .toggle-checkbox.emerald-toggle:checked + .toggle-label {
+            background-color: #059669 !important;
+            border-color: #047857 !important;
+        }
+
+        /* Поля ввода и селекты в светлой теме */
+        html:not(.dark) input[type="text"],
+        html:not(.dark) input[type="search"],
+        html:not(.dark) input[type="number"],
+        html:not(.dark) select {
+            border: 1.5px solid #cbd5e1 !important;
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+        }
+        html:not(.dark) input:focus,
+        html:not(.dark) select:focus {
+            border-color: #3b82f6 !important;
+            outline: none !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+        }
+
+        /* Вкладки переключения режима и темы */
+        html:not(.dark) .mode-tabs {
+            background-color: #e2e8f0 !important;
+            border: 1px solid #cbd5e1 !important;
+        }
+        html:not(.dark) .mode-tabs button[aria-selected="true"] {
+            background-color: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.1) !important;
+            color: #0f172a !important;
+        }
+        html:not(.dark) .theme-control {
+            border: 1px solid #cbd5e1 !important;
+            background-color: #e2e8f0 !important;
+        }
+        html:not(.dark) .theme-control button[aria-pressed="true"] {
+            border: 1px solid #cbd5e1 !important;
+        }
+
+        /* ========================================================
+           ВСЕ МОДАЛЬНЫЕ ОКНА В СВЕТЛОЙ ТЕМЕ: Чёткие контуры и тени
+        ======================================================== */
+        html:not(.dark) #review-modal,
+        html:not(.dark) #hidden-data-modal,
+        html:not(.dark) #support-modal,
+        html:not(.dark) #list-settings-modal,
+        html:not(.dark) #placeholder-settings-modal,
+        html:not(.dark) #qwen-confirm-modal,
+        html:not(.dark) #global-overlay > div {
+            border: 1.5px solid #cbd5e1 !important;
+            box-shadow: 0 20px 30px -10px rgba(15, 23, 42, 0.18), 0 10px 15px -5px rgba(15, 23, 42, 0.08) !important;
+            background-color: #ffffff !important;
+        }
+
+        /* Разделители в модальных окнах */
+        html:not(.dark) #review-modal .border-b,
+        html:not(.dark) #review-modal .border-t,
+        html:not(.dark) #hidden-data-modal .border-b,
+        html:not(.dark) #hidden-data-modal .border-t,
+        html:not(.dark) #list-settings-modal .border-b,
+        html:not(.dark) #list-settings-modal .border-t {
+            border-color: #cbd5e1 !important;
+        }
+
+        /* Модальное окно проверки находок (#review-modal) */
+        html:not(.dark) #review-filters {
+            background-color: #f8fafc !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 10px;
+            padding: 10px;
+        }
+        html:not(.dark) #review-list > div {
+            border: 1.5px solid #cbd5e1 !important;
+            background-color: #ffffff !important;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+            border-radius: 10px;
+        }
+
+        /* Модальное окно исключений и замен (#list-settings-modal) */
+        html:not(.dark) #list-settings-modal .flex.gap-2.bg-slate-100 {
+            background-color: #e2e8f0 !important;
+            border: 1px solid #cbd5e1 !important;
+        }
+        html:not(.dark) #list-settings-modal .flex-1.overflow-hidden.bg-slate-50 {
+            background-color: #f8fafc !important;
+            border: 1.5px solid #cbd5e1 !important;
+        }
+        html:not(.dark) #list-settings-modal .p-3.border-b {
+            border-bottom: 1.5px solid #cbd5e1 !important;
+            background-color: #ffffff !important;
+        }
+        html:not(.dark) #list-exclusions > div,
+        html:not(.dark) #list-replacements > div {
+            background-color: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+            border-radius: 8px;
+            margin-bottom: 6px;
+        }
+
+        /* Модальное окно поддержки (#support-modal) */
+        html:not(.dark) #support-modal .border.border-slate-200 {
+            border: 2px solid #cbd5e1 !important;
+            box-shadow: 0 2px 5px rgba(15, 23, 42, 0.06) !important;
+        }
+        html:not(.dark) #support-modal .bg-slate-50 {
+            background-color: #f8fafc !important;
+            border: 1.5px solid #cbd5e1 !important;
+        }
+
+        /* Модальное окно Qwen (#qwen-confirm-modal) */
+        html:not(.dark) #qwen-confirm-modal .bg-slate-50 {
+            background-color: #f8fafc !important;
+            border: 1.5px solid #cbd5e1 !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 overflow-hidden h-screen w-screen flex flex-col items-center m-0 p-0 transition-colors duration-200">
+
+    <!-- Global Progress Overlay -->
+    <div id="global-overlay">
+        <div class="bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 text-center max-w-md w-full overflow-hidden box-border">
+            <h3 id="progress-title" class="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2 break-words [overflow-wrap:anywhere] px-2">Обработка...</h3>
+            <p id="progress-text" class="text-sm text-slate-500 dark:text-slate-400 mb-4 break-words [overflow-wrap:anywhere] px-2 leading-relaxed">Пожалуйста, подождите</p>
+            <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 mb-2 overflow-hidden">
+                <div id="progress-bar" class="bg-primary h-2.5 rounded-full transition-all" style="width: 0%"></div>
+            </div>
+            <p id="progress-percent" class="text-xs font-semibold text-slate-700 dark:text-slate-300">0%</p>
+            <button id="btn-cancel-operation" type="button" onclick="cancelCurrentOperation()" class="mt-4 px-5 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition-colors border border-red-200 dark:border-red-900/50">Отмена</button>
+        </div>
+    </div>
+
+    <!-- Safe manual review: only redacted context is rendered. -->
+    <div id="review-overlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[1050] hidden items-center justify-center transition-all opacity-0" role="dialog" aria-modal="true" aria-labelledby="review-title">
+        <div id="review-modal" class="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-5xl transform scale-95 transition-all flex flex-col h-[90vh] max-h-[760px]">
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-3">
+                <div class="min-w-0 flex-1 pr-3">
+                    <h3 id="review-title" class="text-lg font-bold text-slate-900 dark:text-slate-100">Проверка найденных сущностей</h3>
+                    <p id="review-summary" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Загрузка…</p>
+                </div>
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                    <button type="button" id="btn-review-open-external" onclick="openReviewExternalWindow()" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-300 dark:hover:border-blue-700 transition-colors cursor-pointer" title="Открыть в отдельном окне для комфортного чтения">
+                        <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                        <span>В отдельном окне</span>
+                    </button>
+                    <button type="button" id="btn-review-toggle-expand" onclick="toggleReviewModalExpand()" class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer" title="Развернуть на весь экран">
+                        <svg id="icon-review-expand" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                        <svg id="icon-review-collapse" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14h6m0 0v6m0-6L3 21m17-7h-6m0 0v6m0-6l7 7M4 10h6m0 0V4m0 6L3 3m17 7h-6m0 0V4m0 6l7-7"/></svg>
+                    </button>
+                    <button type="button" onclick="closeReviewModal()" aria-label="Закрыть" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <p class="text-xs text-slate-500 dark:text-slate-400">💡 Все данные уже обезличены в итоговых файлах. Экран нужен только для точечной отмены ложных срабатываний кнопкой «Отклонить». Если всё в порядке — нажмите «Готово».</p>
+                <button type="button" id="btn-review-toggle-filters" onclick="toggleReviewFilters()" class="text-xs text-primary dark:text-blue-400 hover:underline flex items-center gap-1 font-medium flex-shrink-0">
+                    <span id="txt-review-toggle-filters">Скрыть фильтры</span>
+                    <svg id="icon-filters-arrow" class="w-3.5 h-3.5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                </button>
+            </div>
+
+            <div id="review-filters-collapsible" class="transition-all duration-200 overflow-hidden">
+                <form id="review-filters" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mb-3" aria-label="Фильтры находок">
+                    <label class="text-xs text-slate-600 dark:text-slate-300">Тип
+                        <select id="review-filter-type" class="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2 py-1.5 text-sm" aria-label="Фильтр по типу">
+                            <option value="">Все типы</option>
+                        </select>
+                    </label>
+                    <label class="text-xs text-slate-600 dark:text-slate-300">Документ
+                        <input id="review-filter-document" type="search" class="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2 py-1.5 text-sm" placeholder="Имя или часть имени" aria-label="Фильтр по документу">
+                    </label>
+                    <label class="text-xs text-slate-600 dark:text-slate-300">Статус
+                        <select id="review-filter-status" class="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2 py-1.5 text-sm" aria-label="Фильтр по статусу">
+                            <option value="pending" selected>Ожидают проверки</option><option value="">Все статусы</option><option value="accepted">Принято</option><option value="rejected">Отклонено</option><option value="skipped">Пропущено</option>
+                        </select>
+                    </label>
+                    <label class="text-xs text-slate-600 dark:text-slate-300">Минимальная уверенность
+                        <input id="review-filter-confidence" type="number" min="0" max="100" step="1" value="0" class="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2 py-1.5 text-sm" aria-label="Минимальная уверенность в процентах">
+                    </label>
+                </form>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 mb-2" role="toolbar" aria-label="Массовые действия">
+                <button id="review-batch-accept" type="button" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-white hover:bg-blue-600 disabled:opacity-50 transition-colors" aria-label="Принять все находки по фильтру">Принять отфильтрованные</button>
+                <button id="review-filter-reset" type="button" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" aria-label="Сбросить фильтры">Сбросить фильтры</button>
+                <button id="review-clear-queue" type="button" onclick="clearReviewQueue()" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors ml-auto" aria-label="Очистить список">Очистить список</button>
+                <span id="review-filter-hint" class="text-xs text-slate-500 dark:text-slate-400 w-full mt-0.5" role="status" aria-live="polite"></span>
+            </div>
+
+            <div id="review-list" class="flex-1 overflow-y-auto flex flex-col gap-2.5 min-h-0 pr-1"></div>
+
+            <div class="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                <button type="button" onclick="closeReviewModal()" class="px-5 py-2 text-sm font-medium text-white bg-primary hover:bg-blue-600 rounded-lg transition-all">Готово</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aggregate hidden-data policy: no source text or PII is rendered. -->
+    <div id="hidden-data-overlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[1060] hidden items-center justify-center transition-all opacity-0" role="dialog" aria-modal="true" aria-labelledby="hidden-data-title">
+        <div id="hidden-data-modal" class="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl max-h-[86vh] overflow-y-auto transform scale-95 transition-all">
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
+                <div><h3 id="hidden-data-title" class="text-lg font-bold text-slate-900 dark:text-slate-100">Скрытое содержимое</h3><p id="hidden-data-summary" class="text-xs text-slate-500 dark:text-slate-400 mt-1">Проверка рисков…</p></div>
+                <button type="button" onclick="closeHiddenDataModal()" aria-label="Закрыть" class="text-slate-400 hover:text-slate-600 text-xl">×</button>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Показаны только типы и количества. Содержимое комментариев, сносок и текста не передаётся в интерфейс.</p>
+            <div id="hidden-data-risks" class="flex flex-col gap-2 mb-4"></div>
+            <label class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 mb-4"><input id="hidden-data-confirm" type="checkbox" class="rounded"> Я понимаю, что удаление выбранных частей необратимо для созданной копии</label>
+            <div id="hidden-data-status" class="text-xs text-slate-500 dark:text-slate-400 mb-3" role="status" aria-live="polite"></div>
+            <div class="flex justify-end gap-2"><button type="button" onclick="closeHiddenDataModal()" class="px-4 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700">Отмена</button><button id="hidden-data-apply" type="button" class="px-4 py-2 text-sm rounded-lg bg-primary text-white hover:bg-blue-600">Создать безопасную копию</button></div>
+        </div>
+    </div>
+
+    <!-- Support Modal Overlay -->
+    <div id="support-overlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[1050] hidden items-center justify-center transition-all opacity-0" onclick="if(event.target === this) closeSupportModal()">
+        <div class="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 text-center max-w-sm w-full transform scale-95 transition-all" id="support-modal">
+            <div class="w-12 h-12 bg-pink-50 dark:bg-pink-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg class="w-6 h-6 text-pink-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100 mb-1">Поддержать автора</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Отсканируйте QR-код для быстрого перевода:</p>
+            
+            <div class="flex justify-center mb-4 p-3 bg-white rounded-xl border border-slate-200 shadow-sm inline-block mx-auto">
+                <div id="qrcode-container" class="w-[200px] h-[200px] flex items-center justify-center"></div>
+            </div>
+
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-1.5">Или переводом по номеру карты:</p>
+            <div class="flex items-center justify-center gap-2 mb-4 bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                <span id="card-number" class="font-mono text-sm sm:text-base font-semibold text-slate-800 dark:text-slate-100 tracking-wide">5536 9137 6905 7999</span>
+                <button id="btn-copy-card" onclick="copyCardNumber()" title="Скопировать номер карты" class="p-1.5 text-slate-400 hover:text-primary transition-colors rounded hover:bg-slate-200 dark:hover:bg-slate-800">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <a id="support-link" href="#" target="_blank" class="w-full block bg-primary hover:bg-blue-600 text-white font-medium py-2.5 px-4 rounded-xl transition-all shadow-sm mb-2 text-sm">
+                Перейти по ссылке
+            </a>
+            <button onclick="closeSupportModal()" class="w-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-medium py-2 text-sm transition-all">
+                Закрыть
+            </button>
+        </div>
+    </div>
+
+    <!-- List Settings Modal Overlay -->
+    <div id="list-settings-overlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[1050] hidden items-center justify-center transition-all opacity-0">
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl transform scale-95 transition-all flex flex-col h-[80vh]" id="list-settings-modal">
+            
+            <!-- Header -->
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">Настройка списков</h3>
+                <button onclick="closeListSettingsModal()" aria-label="Закрыть" title="Закрыть" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <!-- Tabs -->
+            <div class="flex gap-2 bg-slate-100 dark:bg-slate-950 p-1 rounded-lg mb-4 flex-shrink-0">
+                <button id="btn-tab-exclusions" onclick="switchListTab('exclusions')" class="flex-1 py-1.5 text-sm font-medium bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm rounded-md transition-all">Исключения</button>
+                <button id="btn-tab-replacements" onclick="switchListTab('replacements')" class="flex-1 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 rounded-md transition-all">Замены</button>
+            </div>
+
+            <!-- Content Area -->
+            <div class="flex-1 overflow-hidden flex flex-col min-h-0 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl">
+                
+                <!-- Exclusions Tab -->
+                <div id="tab-content-exclusions" class="flex flex-col h-full">
+                    <div class="p-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                        <div class="flex gap-2">
+                            <input type="text" id="input-new-exclusion" placeholder="Добавить слово в исключения..." class="flex-1 text-sm rounded-lg border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-slate-700 dark:text-slate-200 outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm transition-all" onkeypress="if(event.key==='Enter') addExclusion()">
+                            <button onclick="addExclusion()" class="px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-all shadow-sm">Добавить</button>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-2" id="list-exclusions">
+                        <!-- Items rendered via JS -->
+                    </div>
+                </div>
+
+                <!-- Replacements Tab -->
+                <div id="tab-content-replacements" class="hidden flex-col h-full">
+                    <div class="p-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                        <div class="flex gap-2">
+                            <input type="text" id="input-new-replacement" placeholder="Фраза для замены..." class="flex-1 text-sm rounded-lg border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-slate-700 dark:text-slate-200 outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm transition-all" onkeypress="if(event.key==='Enter') addReplacement()">
+                            <button onclick="addReplacement()" class="px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-all shadow-sm">Добавить</button>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-2" id="list-replacements">
+                        <!-- Items rendered via JS -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 flex-shrink-0">
+                <button onclick="closeListSettingsModal()" class="px-5 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all">
+                    Отмена
+                </button>
+                <button onclick="saveListSettings()" id="btn-save-lists" class="px-5 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm shadow-emerald-600/20 transition-all flex items-center gap-2">
+                    <span>Сохранить изменения</span>
+                </button>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Placeholder Settings Modal Overlay: ВАРИАНТ 3 (Master-Detail) -->
+    <div id="placeholder-settings-overlay" class="fixed inset-0 bg-slate-900/50 dark:bg-slate-950/75 backdrop-blur-sm z-[1050] hidden items-center justify-center p-3 sm:p-5 transition-all opacity-0" onclick="if(event.target === this) closePlaceholderSettingsModal()">
+        <div class="bg-white dark:bg-[#131b2e] border border-slate-200 dark:border-[#263550] text-slate-900 dark:text-slate-100 transform scale-95 transition-all shadow-2xl rounded-2xl" id="placeholder-settings-modal">
+            
+            <!-- Шапка модального окна -->
+            <div class="modal-header">
+                <div class="header-top">
+                    <div class="modal-title">
+                        Настройка категорий обезличивания
+                        <span class="counter-pill" id="placeholder-counter-badge">37 из 37</span>
+                    </div>
+                    <button class="close-btn" onclick="closePlaceholderSettingsModal()" aria-label="Закрыть" title="Закрыть">✕</button>
+                </div>
+                <div class="modal-subtitle">Выберите правила маскирования персональных данных, реквизитов и документов</div>
+            </div>
+            
+            <!-- Панель фильтров и поиска -->
+            <div class="modal-controls">
+                <div class="format-selector">
+                    <span style="color: var(--text-muted); font-weight: 500;">Формат скобок:</span>
+                    <label>
+                        <input type="radio" name="bracket_type" value="square" checked onchange="onBracketTypeChange()">
+                        <span>Квадратные <strong style="font-family: monospace; color: var(--tag-color);">[ФИО]</strong></span>
+                    </label>
+                    <label>
+                        <input type="radio" name="bracket_type" value="slash" onchange="onBracketTypeChange()">
+                        <span>Косые <strong style="font-family: monospace; color: var(--tag-color);">/ФИО/</strong></span>
+                    </label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px; font-size: 12px;">
+                        <button type="button" onclick="toggleAllPlaceholders(true)" style="background: none; border: none; color: var(--tag-color); cursor: pointer; text-decoration: underline;">Выбрать все</button>
+                        <span style="color: var(--border);">|</span>
+                        <button type="button" onclick="toggleAllPlaceholders(false)" style="background: none; border: none; color: var(--text-muted); cursor: pointer; text-decoration: underline;">Снять все</button>
+                    </div>
+                    <input type="text" id="input-search-placeholders" class="search-input" placeholder="Поиск по названию, описанию..." oninput="filterPlaceholderList(this.value)">
+                </div>
+            </div>
+
+            <!-- Чипы разделов -->
+            <div class="section-chips-bar" id="section-filter-chips">
+                <!-- Rendered by JS -->
+            </div>
+
+            <!-- Рабочая область контента: ВАРИАНТ 3: ДВУХПАНЕЛЬНЫЙ (Master-Detail) -->
+            <div class="modal-content-body">
+                <div class="split-view">
+                    
+                    <!-- Список слева (Master List) -->
+                    <div class="split-list" id="split-list-container">
+                        <div id="placeholders-list" style="display: flex; flex-direction: column; gap: 6px;">
+                            <!-- Items rendered via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Детали справа (Detail Preview Pane) -->
+                    <div class="split-preview-pane">
+                        <div>
+                            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
+                                <div class="pane-title" id="pane-title">ФИО и должностные лица</div>
+                                <span id="pane-active-status" class="status-pill active">Включено</span>
+                            </div>
+                            <div class="pane-desc" id="pane-desc">
+                                Правило распознает фамилии, имена, отчества должностных лиц и граждан в любых падежах с сохранением указания должности.
+                            </div>
+                            
+                            <div class="preview-sandbox">
+                                <div class="sandbox-label">Исходный фрагмент:</div>
+                                <div class="sandbox-value" id="pane-before">Генеральный директор Иванов Иван Иванович</div>
+                                
+                                <div class="sandbox-label">Результат маскирования:</div>
+                                <div class="sandbox-value result" id="pane-after">Генеральный директор [ФИО]</div>
+                            </div>
+
+                            <div class="pane-meta">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                                    <span style="color: var(--text-muted);">Раздел:</span>
+                                    <span id="pane-group" style="color: var(--text-main); font-weight: 500;">Личные данные и подписанты</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; gap: 8px;">
+                                    <span style="color: var(--text-muted); flex-shrink: 0;">Ключи:</span>
+                                    <span id="pane-keys" style="font-family: monospace; font-size: 10.5px; color: var(--tag-color); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px;">PER, FULL_FIO</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 15px; padding-top: 12px; border-top: 1px solid var(--border);">
+                            Используемый токен: <b id="pane-token" class="badge-tag" style="font-size: 12px;">[ФИО]</b>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            
+            <!-- Футер модального окна -->
+            <div class="modal-footer">
+                <div class="footer-status" id="placeholder-counter">Активно 37 из 37 категорий</div>
+                <div class="footer-actions">
+                    <button class="btn-cancel" onclick="closePlaceholderSettingsModal()">Отмена</button>
+                    <button class="btn-save" id="btn-save-placeholders" onclick="savePlaceholderSettings()">
+                        <span>Сохранить изменения</span>
+                    </button>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+
+    <!-- Плашка подтверждения установки Qwen 3.5 -->
+    <div id="qwen-confirm-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1050] hidden items-center justify-center p-4 transition-opacity opacity-0">
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md transform scale-95 transition-all flex flex-col gap-4" id="qwen-confirm-modal">
+            <!-- Заголовок -->
+            <div class="flex items-start gap-3.5">
+                <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 leading-snug">
+                        Вы действительно хотите установить Qwen 3.5 0.8B?
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        Модель работает <strong>полностью локально</strong> на вашем устройстве без обращения к внешним серверам и интернету. Она автоматически согласовывает падежи, окончания и связность фраз при подстановке исходных данных из дешифратора.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Пример использования -->
+            <div class="bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 text-xs flex flex-col gap-2">
+                <span class="font-semibold text-slate-700 dark:text-slate-300 text-[11px] uppercase tracking-wider">Пример использования:</span>
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex items-start gap-2 text-slate-600 dark:text-slate-400">
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex-shrink-0">Без Qwen:</span>
+                        <span>«...выдано представителю <span class="line-through text-slate-400">Иванов Иван Иванович</span>»</span>
+                    </div>
+                    <div class="flex items-start gap-2 text-emerald-700 dark:text-emerald-400 font-medium">
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex-shrink-0">С Qwen 3.5:</span>
+                        <span>«...выдано представителю <strong>Иванову Ивану Ивановичу</strong>»</span>
+                    </div>
+                </div>
+                <div class="pt-1.5 border-t border-slate-200 dark:border-slate-800/80 text-[11px] text-slate-400 dark:text-slate-500">
+                    Объем загрузки: ~1.75 ГБ. Загружается один раз в каталог пользователя.
+                </div>
+            </div>
+
+            <!-- Кнопки выбора Да / Нет -->
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button type="button" onclick="closeQwenConfirmModal(false)" class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all">
+                    Нет
+                </button>
+                <button type="button" onclick="confirmQwenInstallAndStart()" class="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-xl shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    Да, установить
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-950 w-full max-w-4xl h-full flex flex-col relative shadow-md border-x border-slate-200 dark:border-slate-800">
+        <header class="app-header flex items-center justify-between px-5 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+            <div class="min-w-0">
+            <h1 class="text-lg font-semibold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
+                <svg id="app-icon" class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                DOCXдодыр <span id="app-version-badge" class="text-sm font-medium text-slate-400 dark:text-slate-500">v3.0</span>
+            </h1>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 pl-7">Локальная обработка документов</p>
+            </div>
+            <div class="header-actions flex items-center gap-3">
+                <div id="header-status" class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border border-green-100 dark:border-green-500/20" role="status" aria-live="polite">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                    Готово к работе
+                </div>
+                <div class="mode-tabs flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg" role="tablist" aria-label="Режим работы">
+                    <button id="btn-tab-anonymize" role="tab" aria-selected="true" onclick="switchTab('anonymize')" class="px-4 py-1.5 text-sm font-medium bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm rounded-md transition-all">Обезличивание</button>
+                    <button id="btn-tab-restore" role="tab" aria-selected="false" onclick="switchTab('restore')" class="px-4 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-md transition-all">Восстановление</button>
+                </div>
+                
+                <!-- Theme Toolbar -->
+                <div class="theme-control flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg gap-0.5 border border-slate-200 dark:border-slate-700" role="group" aria-label="Тема интерфейса">
+                    <button onclick="setTheme('light')" id="btn-theme-light" aria-pressed="false" class="p-1.5 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 transition-all focus:outline-none" title="Светлая тема" aria-label="Светлая тема">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    </button>
+                    <button onclick="setTheme('dark')" id="btn-theme-dark" aria-pressed="false" class="p-1.5 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-all focus:outline-none" title="Темная тема" aria-label="Темная тема">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                    </button>
+                    <button onclick="setTheme('system')" id="btn-theme-system" aria-pressed="false" class="p-1.5 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-all focus:outline-none" title="Системная тема" aria-label="Системная тема">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Вкладка Обезличивания -->
+        <main id="tab-anonymize" class="p-5 flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+            <div id="dropzone-anonymize" class="relative group cursor-pointer flex-shrink-0" onclick="openFileDialog('anonymize_docs')">
+                <div class="absolute inset-0 bg-primary/5 rounded-xl opacity-0 group-hover:opacity-100 transition-all"></div>
+                <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-primary/50 dark:hover:border-primary/50 rounded-xl py-6 px-4 text-center transition-all flex flex-col items-center justify-center gap-3">
+                    <div class="w-12 h-12 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-full flex items-center justify-center group-hover:text-primary group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30 transition-all">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Нажмите для выбора файлов или перетащите их сюда</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Поддерживаемые форматы: .docx, .xlsx, .pdf, .jpg, .png, .tiff, .bmp, .webp</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="folder-dropzone" class="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-4 shadow-sm flex-shrink-0 transition-all" aria-label="Пакетная обработка папки">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="min-w-0 flex-1">
+                        <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Обезличить папку целиком</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Перетащите сюда папку или выберите её кнопкой. Все документы (DOCX, XLSX, PDF, сканы и фото) будут обработаны. Результаты попадут в подпапку «Обезличенные документы», исходные файлы не изменяются.</p>
+                    </div>
+                    <button id="btn-select-folder" type="button" onclick="openFolderDialog('anonymize_folder')" class="flex-shrink-0 px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                        Выбрать папку
+                    </button>
+                </div>
+                <p id="folder-status" class="text-xs text-slate-500 dark:text-slate-400 mt-3 break-all [overflow-wrap:anywhere]" style="word-break: break-all; overflow-wrap: anywhere;" role="status" aria-live="polite">Папка не выбрана</p>
+                <p id="folder-output-hint" class="hidden"></p>
+                <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Общий JSON-дешифратор сохраняется в выбранной папке, чтобы его можно было найти из вложенных документов.</p>
+                <label class="flex items-center justify-between cursor-pointer group mt-3" title="Сохранить прежние номера плейсхолдеров и добавить в общий дешифратор только новые сущности">
+                    <span class="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-all">Продолжить существующий комплект <span class="text-slate-400 dark:text-slate-500 text-xs ml-1">(использовать прежний дешифратор)</span></span>
+                    <div class="relative ml-3">
+                        <input type="checkbox" id="cb-continue-folder" class="sr-only toggle-checkbox">
+                        <div class="toggle-label dark:bg-slate-700"></div>
+                    </div>
+                </label>
+            </div>
+
+
+            <div class="flex flex-col md:flex-row gap-4 flex-shrink-0">
+                <div class="flex-1 bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-100 dark:border-slate-800">
+                    <div class="flex justify-between items-end mb-1">
+                        <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Форматы сохранения</h2>
+                        <span id="badge-status" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border border-green-100 dark:border-green-500/20">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                            Готово
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Если ни один формат не выбран, сохраняется исходный формат (DOCX→DOCX, XLSX→XLSX, PDF→PDF, фото→PDF). При выборе форматов создаются только выбранные.</p>
+                    
+                    <div class="flex flex-col gap-2.5">
+                        <label class="save-format-item flex items-center justify-between cursor-pointer group">
+                            <span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-all">Документ Word <span class="text-slate-400 dark:text-slate-500 text-xs ml-1">(.docx)</span></span>
+                            <div class="relative flex-shrink-0">
+                                <input type="checkbox" id="cb-save-original" name="cb-save-docx" class="sr-only toggle-checkbox">
+                                <div class="toggle-label dark:bg-slate-700"></div>
+                            </div>
+                        </label>
+                        <label class="save-format-item flex items-center justify-between cursor-pointer group">
+                            <span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-all">Документ PDF <span class="text-slate-400 dark:text-slate-500 text-xs ml-1">(.pdf)</span></span>
+                            <div class="relative flex-shrink-0">
+                                <input type="checkbox" id="cb-save-pdf" class="sr-only toggle-checkbox">
+                                <div class="toggle-label dark:bg-slate-700"></div>
+                            </div>
+                        </label>
+                        <label class="save-format-item flex items-center justify-between cursor-pointer group">
+                            <span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-all">Документ Markdown <span class="text-slate-400 dark:text-slate-500 text-xs ml-1">(.md)</span></span>
+                            <div class="relative flex-shrink-0">
+                                <input type="checkbox" id="cb-save-md" class="sr-only toggle-checkbox">
+                                <div class="toggle-label dark:bg-slate-700"></div>
+                            </div>
+                        </label>
+                        <label class="save-format-item flex items-center justify-between cursor-pointer group" title="Страницы PDF станут изображениями; текстовый слой и интерактивные объекты будут удалены">
+                            <span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-all">Необратимый PDF <span class="text-slate-400 dark:text-slate-500 text-xs ml-1">(без текстового слоя)</span></span>
+                            <div class="relative flex-shrink-0">
+                                <input type="checkbox" id="cb-irreversible-pdf" class="sr-only toggle-checkbox">
+                                <div class="toggle-label dark:bg-slate-700"></div>
+                            </div>
+                        </label>
+                        <label class="save-format-item flex items-center justify-between cursor-pointer group">
+                            <span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-all">Создать файл-дешифратор <span class="text-slate-400 dark:text-slate-500 text-xs ml-1">(в папке создаётся общий)</span></span>
+                            <div class="relative flex-shrink-0">
+                                <input type="checkbox" id="cb-save-decoder" class="sr-only toggle-checkbox">
+                                <div class="toggle-label dark:bg-slate-700"></div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
+                        <label class="flex flex-col gap-2">
+                            <span class="text-sm text-slate-700 dark:text-slate-300">Язык OCR для сканов и фото:</span>
+                            <select id="sel-ocr-lang" class="block w-full text-sm rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-slate-700 dark:text-slate-200 outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm transition-all appearance-none cursor-pointer">
+                                <option value="rus">Только Русский</option>
+                                <option value="rus+eng" selected>Автоопределение (Русский / Английский)</option>
+                                <option value="eng">Только Английский</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="w-full md:w-64 flex flex-col gap-4">
+                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-1 shadow-sm flex flex-col">
+                        <button onclick="showPlaceholderSettingsModal()" class="text-left px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 rounded-lg transition-all flex items-center justify-between">
+                            Настройка обезличивания
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </button>
+                        <button onclick="showListSettingsModal()" class="text-left px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 rounded-lg transition-all flex items-center justify-between">
+                            Исключения и замены
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </button>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <h3 class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">Быстрые действия</h3>
+                        <button onclick="runAction('pdf_ocr')" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            Распознавание PDF
+                        </button>
+                        <button id="btn-review-findings" onclick="showReviewModal()" class="hidden w-full px-4 py-2 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-sm font-medium rounded-lg transition-all border border-blue-100 dark:border-blue-500/20 flex items-center justify-center gap-2">
+                            Проверить находки
+                        </button>
+                        <button id="btn-hidden-data" onclick="openHiddenDataPicker()" class="w-full px-4 py-2 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/20 text-sm font-medium rounded-lg transition-all border border-amber-100 dark:border-amber-500/20 flex items-center justify-center gap-2">
+                            Проверить скрытые данные
+                        </button>
+                        <button id="btn-report-bug" onclick="showReportBugModal()" class="w-full px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                            Сообщить о баге
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Вкладка Восстановления -->
+        <main id="tab-restore" class="p-5 flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto overflow-x-hidden hidden">
+            <div class="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-4 shadow-sm flex-shrink-0">
+                <div class="flex items-center gap-3 mb-3">
+                    <span class="w-6 h-6 rounded flex items-center justify-center text-xs font-bold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">1</span>
+                    <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Загрузите обработанный документ</h2>
+                    <span class="text-xs text-slate-400 dark:text-slate-500 font-normal ml-auto">DOCX / Excel</span>
+                </div>
+                <div id="dropzone-restore-doc" class="relative group cursor-pointer" onclick="openFileDialog('restore_doc')">
+                    <div class="absolute inset-0 bg-emerald-500/5 rounded-xl opacity-0 group-hover:opacity-100 transition-all"></div>
+                    <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-emerald-400/50 dark:hover:border-emerald-500/50 rounded-xl py-6 px-4 text-center transition-all flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-950">
+                        <svg class="w-8 h-8 text-slate-300 dark:text-slate-600 group-hover:text-emerald-500 transition-all mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                        <p class="text-sm font-medium text-slate-700 dark:text-slate-300" id="lbl-restore-doc">Перетащите сюда или нажмите для выбора</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-4 shadow-sm flex-shrink-0">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 rounded flex items-center justify-center text-xs font-bold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">2</span>
+                        <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Файл-дешифратор</h2>
+                        <span class="text-xs text-slate-400 dark:text-slate-500 font-normal">.json</span>
+                    </div>
+                    <label class="flex items-center gap-3 cursor-pointer group bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <span class="text-xs font-medium text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-all">Автопоиск</span>
+                        <div class="relative flex-shrink-0">
+                            <input type="checkbox" id="cb-auto-decoder" class="sr-only toggle-checkbox emerald-toggle" checked>
+                            <div class="toggle-label !w-8 !h-5 after:!w-4 after:!h-4 after:!top-0.5 after:!left-0.5 dark:bg-slate-700"></div>
+                        </div>
+                    </label>
+                </div>
+                <div id="dropzone-restore-json" class="relative group cursor-pointer" onclick="openFileDialog('restore_json')">
+                    <div class="absolute inset-0 bg-emerald-500/5 rounded-xl opacity-0 group-hover:opacity-100 transition-all"></div>
+                    <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-emerald-400/50 dark:hover:border-emerald-500/50 rounded-xl py-6 px-4 text-center transition-all flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-950">
+                        <svg class="w-8 h-8 text-slate-300 dark:text-slate-600 group-hover:text-emerald-500 transition-all mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <p class="text-sm font-medium text-slate-700 dark:text-slate-300" id="lbl-restore-json">Перетащите .json сюда или нажмите для выбора</p>
+                    </div>
+                </div>
+                <p id="restore-decoder-hint" class="text-xs text-slate-500 dark:text-slate-400 mt-3" role="status" aria-live="polite">Если JSON не выбран, программа ищет его в папке документа и в родительских папках.</p>
+            </div>
+
+            <!-- Блок согласования текста Qwen 3.5 -->
+            <div class="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-4 shadow-sm flex-shrink-0">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 rounded flex items-center justify-center text-xs font-bold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">3</span>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Согласование текста нейросетью Qwen 3.5</h2>
+                                <span id="qwen-status-badge" class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500">Не установлена</span>
+                            </div>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Локальное согласование падежей и грамматических форм при восстановлении данных</p>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer flex-shrink-0" title="Использовать локальную модель Qwen для согласования текста">
+                        <input type="checkbox" id="cb-qwen-postprocess" class="sr-only toggle-checkbox emerald-toggle">
+                        <div class="toggle-label !w-8 !h-5 after:!w-4 after:!h-4 after:!top-0.5 after:!left-0.5 dark:bg-slate-700"></div>
+                    </label>
+                </div>
+
+                <!-- Строка загрузки модели в процентах -->
+                <div id="qwen-inline-progress" class="hidden mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 flex-col gap-2">
+                    <div class="flex items-center justify-between text-xs">
+                        <span id="qwen-inline-progress-text" class="text-slate-700 dark:text-slate-200 font-medium">Загрузка Qwen 3.5 0.8B...</span>
+                        <span id="qwen-inline-progress-percent" class="font-bold text-emerald-600 dark:text-emerald-400">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-200 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                        <div id="qwen-inline-progress-bar" class="bg-emerald-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                        <span id="qwen-inline-progress-detail">Подготовка загрузки...</span>
+                        <button type="button" onclick="cancelQwenOperation()" class="text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 font-medium transition-colors">Отмена</button>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="runRestore()" class="mt-2 w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-medium py-3.5 px-4 rounded-xl shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
+                Восстановить исходные данные
+            </button>
+        </main>
+
+        <footer class="app-footer px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-between text-sm">
+            <div class="footer-links flex-1 flex items-center justify-between gap-4">
+            <a href="https://t.me/pro_servitude" target="_blank" rel="noopener noreferrer" onclick="openTelegramChannel(event)" class="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-[#0088cc] dark:hover:text-[#33aadd] transition-colors font-medium">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.06-.2-.06-.05-.14-.03-.21-.02-.09.02-1.46.93-4.12 2.73-.39.27-.74.4-1.06.39-.35-.01-1.02-.2-1.52-.36-.61-.2-1.1-.31-1.07-.66.02-.18.27-.36.75-.55 2.94-1.28 4.91-2.13 5.89-2.54 2.8-1.18 3.38-1.38 3.76-1.39.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .34z"/></svg>
+                Telegram-канал
+            </a>
+            
+            <a href="https://t.me/aebeloglazov" target="_blank" rel="noopener noreferrer" onclick="openAuthorTelegram(event)"
+                class="flex items-center gap-2 text-slate-500 dark:text-slate-400 transition-colors font-medium"
+                style="text-decoration: none;"
+                onmouseover="this.style.color='#10b981'"
+                onmouseout="this.style.color=''">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+                Написать автору
+            </a>
+
+            <a href="#" onclick="openSupport(event)" class="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-pink-600 dark:hover:text-pink-400 transition-colors font-medium">
+                <svg class="w-4 h-4 text-pink-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                Поддержать автора
+            </a>
+
+            <span class="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">© <span id="footer-year"></span></span>
+            </div>
+        </footer>
+    <!-- Модальное окно: Сообщить о баге -->
+    <div id="report-bug-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[1050] hidden items-center justify-center transition-all opacity-0" role="dialog" aria-modal="true" aria-labelledby="report-bug-title">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 transform scale-95 transition-all flex flex-col" style="width: 440px; min-height: 280px; max-width: calc(100vw - 2rem);">
+            <!-- Заголовок -->
+            <div class="flex items-center justify-between px-6 pt-6 pb-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    </div>
+                    <h3 id="report-bug-title" class="text-base font-bold text-slate-900 dark:text-slate-100">Сообщить о баге</h3>
+                </div>
+                <button type="button" onclick="closeReportBugModal()" aria-label="Закрыть" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Контент -->
+            <div class="px-6 pb-5 text-sm text-slate-600 dark:text-slate-300 space-y-4 flex-1">
+                <p class="leading-relaxed">Если вы обнаружили ошибку в работе программы или хотите предложить улучшение — напишите на почту, приложив скриншот.</p>
+                
+                <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Почта для обратной связи</span>
+                        <button type="button" onclick="copyBugEmail()" class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 transition-colors">
+                            <span id="copy-email-status">Скопировать</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        </button>
+                    </div>
+                    <div id="bug-report-email" class="font-mono text-base font-semibold leading-7 tracking-wide select-all break-all">pro.servitude@gmail.com</div>
+                </div>
+            </div>
+
+            <!-- Кнопки -->
+            <div class="flex items-center justify-end px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+                <button type="button" onclick="closeReportBugModal()" class="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">Закрыть</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="qrcode.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

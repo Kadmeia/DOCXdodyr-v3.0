@@ -1,0 +1,8 @@
+# DOCXдодыр — зависимости приложения для CPython 3.11.x
+# Платформенные пакеты выбираются по sys_platform внутри включаемых файлов.
+-r requirements/requirements-core.txt
+-r requirements/requirements-macos.txt
+-r requirements/requirements-windows.txt
+
+# Дополнительно: requirements/requirements-dev.txt (тесты и сборка),
+# requirements/requirements-qwen.txt (локальный модуль Qwen).

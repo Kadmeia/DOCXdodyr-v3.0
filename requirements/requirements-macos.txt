@@ -1,0 +1,7 @@
+# DOCXдодыр — Платформенные зависимости для macOS (Pinned)
+-r requirements-core.txt
+
+pyobjc-framework-Cocoa==11.1; sys_platform == "darwin"
+pyobjc-framework-Quartz==11.1; sys_platform == "darwin"
+pyobjc-framework-Vision==11.1; sys_platform == "darwin"
+pytesseract==0.3.13; sys_platform == "darwin"

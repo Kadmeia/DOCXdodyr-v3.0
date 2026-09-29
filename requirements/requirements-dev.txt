@@ -1,0 +1,11 @@
+# DOCXдодыр — Инструменты разработки и тестирования (Dev Pinned)
+-r requirements-core.txt
+
+pytest==8.4.2
+pytest-mock==3.15.1
+build==1.2.2.post1
+pyinstaller==6.22.2
+psutil==7.2.2
+
+# Workflow contract tests parse GitHub Actions YAML.
+PyYAML==6.0.3

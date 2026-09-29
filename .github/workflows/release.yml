@@ -1,0 +1,182 @@
+name: Release Candidate Build and Validation
+
+# Explicit operations only. This workflow never publishes a GitHub release.
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        type: choice
+        options: [build, validate]
+        default: build
+      channel:
+        type: choice
+        options: [unsigned-preview, signed-stable]
+        default: unsigned-preview
+      build_run_id:
+        description: Prior build run from this repository; required for validate
+        type: string
+      native_evidence_run_id:
+        description: Reviewed native evidence run; required for validate
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: release-${{ github.ref }}-${{ inputs.operation }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: inputs.operation == 'build' && (inputs.channel != 'signed-stable' || (github.ref_protected && vars.RELEASE_PROTECTED_REF != '' && github.ref == vars.RELEASE_PROTECTED_REF))
+    environment: ${{ inputs.channel == 'signed-stable' && 'production' || 'preview' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            target: macos-arm64
+            arch: arm64
+            system: macos
+          # Known dependency blocker: current ONNX/Torch pins lack Intel wheels.
+          # Failure here must not be masked or advertised as supported.
+          - runner: macos-15-intel
+            target: macos-x86_64
+            arch: x86_64
+            system: macos
+          - runner: windows-latest
+            target: windows-x64
+            arch: x64
+            system: windows
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '14.0'
+      TARGET: ${{ matrix.target }}
+      ARCH: ${{ matrix.arch }}
+      BUILD_SYSTEM: ${{ matrix.system }}
+      CHANNEL: ${{ inputs.channel }}
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11.15'
+          architecture: ${{ matrix.arch == 'arm64' && 'arm64' || 'x64' }}
+      - name: Install pinned native dependencies
+        run: |
+          python -m pip install pip==26.2.1 setuptools==80.9.0 wheel==0.45.1
+          python scripts/prepare_release_environment.py --target "$TARGET"
+      - name: Install Windows installer tool
+        if: runner.os == 'Windows'
+        run: choco install innosetup --yes --no-progress
+      - name: Base source suite (native acceptance is separate)
+        env:
+          DOCXDODYR_TEST_KEYRING: '1'
+        run: python scripts/run_source_tests.py "$RUNNER_TEMP/source-tests.xml"
+      - name: Prepare protected signing material
+        if: inputs.channel == 'signed-stable'
+        env:
+          RELEASE_CERTIFICATE_BASE64: ${{ matrix.system == 'macos' && secrets.MACOS_CERTIFICATE_BASE64 || secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          RELEASE_CERTIFICATE_PASSWORD: ${{ matrix.system == 'macos' && secrets.MACOS_CERTIFICATE_PASSWORD || secrets.WINDOWS_CODESIGN_PASSWORD }}
+        run: python scripts/prepare_ci_signing.py --target "$TARGET"
+      - name: Build selected channel
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          MACOS_INSTALLER_SIGNING_IDENTITY: ${{ secrets.MACOS_INSTALLER_SIGNING_IDENTITY }}
+          WINDOWS_CODESIGN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
+        run: |
+          MODE=--skip-sign
+          if [ "$CHANNEL" = signed-stable ]; then MODE=--production; fi
+          if [ "$BUILD_SYSTEM" = macos ]; then
+            test "$(uname -m)" = "$ARCH"
+            test "$(python -c 'import platform; print(platform.machine())')" = "$ARCH"
+            python scripts/build_macos.py --arch "$ARCH" "$MODE"
+            if [ "$CHANNEL" = signed-stable ]; then
+              test -n "${MACOS_INSTALLER_SIGNING_IDENTITY:-}"
+              case "$MACOS_INSTALLER_SIGNING_IDENTITY" in
+                "Developer ID Installer:"*) ;;
+                *) echo "MACOS_INSTALLER_SIGNING_IDENTITY must be Developer ID Installer" >&2; exit 1 ;;
+              esac
+              python scripts/package_macos_quick_actions_pkg.py \
+                --app "dist/DOCXdodyr-$ARCH.app" --output-dir dist --arch "$ARCH" \
+                --sign-identity "$MACOS_INSTALLER_SIGNING_IDENTITY"
+            else
+              python scripts/package_macos_quick_actions_pkg.py \
+                --app "dist/DOCXdodyr-$ARCH.app" --output-dir dist --arch "$ARCH" --development
+            fi
+            PACKAGE_MODE=--development
+            if [ "$CHANNEL" = signed-stable ]; then PACKAGE_MODE=--production; fi
+            python scripts/package_release.py --package --arch "$ARCH" "$PACKAGE_MODE"
+            python scripts/verify_packaged_app.py "dist/DOCXdodyr-$ARCH.app" --output "dist/$TARGET-verification.json"
+            python scripts/audit_macos_deployment.py "dist/DOCXdodyr-$ARCH.app" --target 14.0 --output "dist/$TARGET-deployment.json"
+          else
+            python scripts/build_windows.py "$MODE"
+            python scripts/verify_packaged_app.py dist/DOCXdodyr --output "dist/$TARGET-verification.json"
+          fi
+          python scripts/environment_sbom.py "dist/$TARGET-environment-sbom.json"
+          python scripts/collect_release_artifacts.py --target "$TARGET" --commit "$GITHUB_SHA" --channel "$CHANNEL" --junit "$RUNNER_TEMP/source-tests.xml" --output "$RUNNER_TEMP/release-stage"
+      - name: Upload immutable candidate artifacts (not release approval)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ${{ matrix.target }}-release-artifacts
+          path: ${{ runner.temp }}/release-stage/*
+          if-no-files-found: error
+      - name: Remove ephemeral signing material
+        if: always() && inputs.channel == 'signed-stable'
+        run: python scripts/prepare_ci_signing.py --target "$TARGET" --cleanup
+
+  validate:
+    if: inputs.operation == 'validate' && github.ref_protected && vars.RELEASE_PROTECTED_REF != '' && github.ref == vars.RELEASE_PROTECTED_REF
+    environment: production
+    runs-on: ubuntu-latest
+    env:
+      BUILD_RUN_ID: ${{ inputs.build_run_id }}
+      EVIDENCE_RUN_ID: ${{ inputs.native_evidence_run_id }}
+      CHANNEL: ${{ inputs.channel }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11.15'
+      - name: Require explicit stable build and evidence runs
+        run: |
+          test "$CHANNEL" = signed-stable
+          test -n "$BUILD_RUN_ID" && test -n "$EVIDENCE_RUN_ID"
+          [[ "$BUILD_RUN_ID" =~ ^[0-9]+$ ]] && [[ "$EVIDENCE_RUN_ID" =~ ^[0-9]+$ ]]
+      - name: Download the prior build without rebuilding
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: '*-release-artifacts'
+          path: candidate-build
+      - name: Download separately reviewed native evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          run-id: ${{ inputs.native_evidence_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: '*-native-evidence'
+          path: candidate-evidence
+      - name: Validate complete inventory, evidence and exact source commit
+        run: python scripts/merge_release_evidence.py --build candidate-build --evidence candidate-evidence --output validated-release --commit "$GITHUB_SHA"
+      - name: Upload validated set for owner review (no publication)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: validated-signed-stable
+          path: validated-release/*
+          if-no-files-found: error

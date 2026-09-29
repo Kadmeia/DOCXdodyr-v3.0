@@ -1,0 +1,101 @@
+# ==============================================================================
+# DOCXдодыр Production .gitignore
+# ==============================================================================
+
+# --- Virtual Environment & Python Runtime ---
+venv/
+.venv/
+.release-audit-venv-*/
+.release-audit/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+build-*/
+dist/
+*.iconset/
+!assets/DOCXdodyr.iconset/
+*.egg-info/
+
+# --- OS & IDE artifacts ---
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.idea/
+.vscode/*
+!.vscode/launch.json
+*.swp
+*.swo
+
+# --- Secrets, API Keys & Credentials (NEVER COMMIT) ---
+.env*
+!*.example
+*.key
+*.pem
+*.p12
+*.pfx
+
+# --- User Runtime Settings & State (NEVER COMMIT) ---
+settings.json
+!settings.example.json
+review_queue.json
+.review_context.enc
+.docxdodyr-incomplete-*
+*.log
+
+# --- Local Cache & Decryptor Mappings ---
+.cache/
+дешифратор*.json
+дешифратор*.manifest.json
+
+# --- Neural Models & Weights (> 100MB / Model Manager) ---
+models/
+*.safetensors
+*.bin
+*.onnx
+*.pt
+*.pth
+*.bundle.zip
+*.bundle
+
+# --- Scratch, Dev Experiments & Adjudication Artifacts ---
+artifacts/
+scratch/
+outputs/
+node_modules/
+**/node_modules/
+
+# --- Real Documents & Test Corpora Containing PII ---
+manual_tests/
+test_logs/
+.work_contract_2026/
+tests/fresh_corpus*/
+tests/source_files/
+tests/test_data/
+tests/output_files/
+тест 2/
+тест 3/
+Тест/
+1/
+corpus/
+
+# --- Generic Document Ignore with Strict Allowlist for Synthetic Fixtures ---
+*.docx
+*.docm
+*.xlsx
+*.xlsm
+*.pdf
+*.doc
+*.rtf
+*.csv
+*.ppt
+*.pptx
+*.sqlite
+*.db
+
+# Safe Reference Tables & Synthetic Test Fixtures Allowlist
+# Test documents are generated locally by tests/create_test_files.py and
+# tests/generate_mock_data.py. Do not commit generated input or output files.
