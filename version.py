@@ -6,12 +6,12 @@ from __future__ import annotations
 import sys
 from typing import Any, Dict, Tuple
 
-__version__: str = "3.0.1"
-VERSION_TUPLE: Tuple[int, int, int] = (3, 0, 1)
+__version__: str = "3.0.2"
+VERSION_TUPLE: Tuple[int, int, int] = (3, 0, 2)
 
 APP_NAME: str = "DOCXdodyr"
 APP_DISPLAY_NAME: str = "DOCXдодыр"
-APP_TITLE: str = "DOCXдодыр v3.0.1"
+APP_TITLE: str = "DOCXдодыр v3.0.2"
 APP_WINDOW_TITLE: str = APP_TITLE
 APP_VERSION: str = __version__
 

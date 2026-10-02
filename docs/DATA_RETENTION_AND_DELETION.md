@@ -1,6 +1,6 @@
 # Хранение и удаление данных
 
-Версия 3.0.1. Источник путей: `app_paths.py`; фактический путь показан во встроенной справке. Переменные DOCXDODYR_DATA_DIR, DOCXDODYR_USER_DATA_DIR, DOCXDODYR_CONFIG_DIR, DOCXDODYR_CACHE_DIR и DOCXDODYR_LOG_DIR могут переопределить каталоги.
+Версия 3.0.2. Источник путей: `app_paths.py`; фактический путь показан во встроенной справке. Переменные DOCXDODYR_DATA_DIR, DOCXDODYR_USER_DATA_DIR, DOCXDODYR_CONFIG_DIR, DOCXDODYR_CACHE_DIR и DOCXDODYR_LOG_DIR могут переопределить каталоги.
 
 | Данные | macOS по умолчанию | Windows по умолчанию |
 |---|---|---|

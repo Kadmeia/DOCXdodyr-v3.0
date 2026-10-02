@@ -3,7 +3,7 @@
 
 #define MyAppName "DOCXдодыр"
 #ifndef MyAppVersion
-#define MyAppVersion "3.0.1"
+#define MyAppVersion "3.0.2"
 #endif
 #define MyAppPublisher "DOCXdodyr Contributors"
 #define MyAppURL "https://github.com/Kadmeia/DOCXdodyr"

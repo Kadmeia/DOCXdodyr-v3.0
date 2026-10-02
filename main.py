@@ -13,6 +13,8 @@ if str(APP_CODE_DIR) not in sys.path:
     sys.path.insert(0, str(APP_CODE_DIR))
 if __name__ == '__main__':
     multiprocessing.freeze_support()
+import unicodedata
+import urllib.parse
 import docx_compat
 import webview
 from backend_api import BackendApi
@@ -32,6 +34,46 @@ except Exception:
     setup_application_logging()
 
 logger = logging.getLogger(__name__)
+
+def _patch_pywebview_dnd():
+    """Обеспечивает сопоставление перетаскиваемых файлов на macOS даже при различиях NFD/NFC в именах."""
+    try:
+        import webview.util
+        orig_js_bridge_call = getattr(webview.util, 'js_bridge_call', None)
+        if not orig_js_bridge_call or getattr(webview.util, '_docxdodyr_dnd_patched', False):
+            return
+
+        def patched_js_bridge_call(window, func_name, param, value_id=None):
+            if func_name == 'pywebviewEventHandler' and isinstance(param, dict):
+                event = param.get('event')
+                if isinstance(event, dict) and event.get('type') == 'drop':
+                    try:
+                        from webview.dom import _dnd_state
+                        files = event.get('dataTransfer', {}).get('files', [])
+                        dnd_paths = _dnd_state.get('paths', [])
+                        for file in files:
+                            if not file.get('pywebviewFullPath') and file.get('name'):
+                                f_name_nfc = unicodedata.normalize('NFC', file['name'])
+                                for item in list(dnd_paths):
+                                    d_name_nfc = unicodedata.normalize('NFC', urllib.parse.unquote(item[0]))
+                                    if f_name_nfc == d_name_nfc:
+                                        file['pywebviewFullPath'] = urllib.parse.unquote(item[1])
+                                        try:
+                                            dnd_paths.remove(item)
+                                        except (ValueError, KeyError):
+                                            pass
+                                        break
+                    except Exception as e:
+                        logger.debug("patched_js_bridge_call drop matching error: %s", e)
+            return orig_js_bridge_call(window, func_name, param, value_id)
+
+        webview.util.js_bridge_call = patched_js_bridge_call
+        webview.util._docxdodyr_dnd_patched = True
+    except Exception as e:
+        logger.debug("Не удалось применить патч pywebview dnd: %s", e)
+
+_patch_pywebview_dnd()
+
 
 def extract_cli_paths(raw_args: list[str]) -> list[str]:
     """Извлекает и нормализует пути к файлам и папкам из аргументов командной строки.
@@ -403,11 +445,21 @@ class ApiWrapper:
         """Вызов диалога выбора файла дешифратора (.json) при фоновом восстановлении."""
         if not self._window:
             return
-        result = self._window.create_file_dialog(
-            webview.OPEN_DIALOG,
-            allow_multiple=False,
-            file_types=('Дешифратор (*.json)', 'Все файлы (*.*)')
-        )
+        try:
+            result = self._window.create_file_dialog(
+                webview.OPEN_DIALOG,
+                allow_multiple=False,
+                file_types=('Дешифратор (*.json)', 'Все файлы (*.*)')
+            )
+        except Exception as exc:
+            logger.warning("Ошибка нативного диалога выбора дешифратора: %s. Повтор без фильтров...", exc)
+            try:
+                result = self._window.create_file_dialog(
+                    webview.OPEN_DIALOG, allow_multiple=False, file_types=('Все файлы (*.*)',)
+                )
+            except Exception as exc2:
+                logger.error("Критический сбой create_file_dialog: %s", exc2)
+                result = None
         if result and len(result) > 0:
             picked_json = str(result[0])
             docs = getattr(self, '_docs_waiting_for_decoder', [])
@@ -469,7 +521,7 @@ class ApiWrapper:
         if dialog_type == 'anonymize_docs':
             file_types = (
                 'Все поддерживаемые (*.docx;*.docm;*.xlsx;*.xlsm;*.pdf;*.jpg;*.jpeg;*.png;*.bmp;*.tiff;*.tif;*.webp)',
-                'Документы Word/Excel/PDF (*.docx;*.docm;*.xlsx;*.xlsm;*.pdf)',
+                'Документы Word Excel PDF (*.docx;*.docm;*.xlsx;*.xlsm;*.pdf)',
                 'Изображения (*.jpg;*.jpeg;*.png;*.bmp;*.tiff;*.tif;*.webp)',
                 'Все файлы (*.*)',
             )
@@ -479,9 +531,19 @@ class ApiWrapper:
             file_types = ('Дешифратор (*.json)',)
         elif dialog_type == 'hidden_inspect':
             file_types = ('Документы (*.docx;*.docm;*.xlsx;*.xlsm;*.pptx;*.pdf)',)
-        result = self._window.create_file_dialog(
-            webview.OPEN_DIALOG, allow_multiple=True, file_types=file_types
-        )
+        try:
+            result = self._window.create_file_dialog(
+                webview.OPEN_DIALOG, allow_multiple=True, file_types=file_types
+            )
+        except Exception as exc:
+            logger.warning("Ошибка вызова нативного диалога выбора файлов с фильтрами: %s. Повтор без строгих фильтров...", exc)
+            try:
+                result = self._window.create_file_dialog(
+                    webview.OPEN_DIALOG, allow_multiple=True, file_types=('Все файлы (*.*)',)
+                )
+            except Exception as exc2:
+                logger.error("Критический сбой вызова create_file_dialog: %s", exc2)
+                result = None
         if result:
             self.files_dropped(dialog_type, list(result))
 
@@ -519,12 +581,63 @@ class ApiWrapper:
         if not isinstance(transfer, dict):
             return []
         paths = []
-        for item in transfer.get('files', []):
+        raw_files = transfer.get('files', [])
+        for item in raw_files:
             if not isinstance(item, dict):
                 continue
             value = item.get('pywebviewFullPath') or item.get('path')
-            if isinstance(value, str) and os.path.isabs(value) and value not in paths:
-                paths.append(value)
+            if isinstance(value, str) and os.path.isabs(value):
+                norm_p = unicodedata.normalize('NFC', value)
+                if norm_p not in paths:
+                    paths.append(norm_p)
+
+        # Fallback for macOS / WebKit where NFD/NFC Unicode differences or missing
+        # pywebviewFullPath cause pywebview's internal matching to skip files.
+        try:
+            from webview.dom import _dnd_state
+            dnd_items = list(_dnd_state.get('paths', []))
+        except Exception:
+            dnd_items = []
+
+        if dnd_items:
+            # Try to match remaining files by normalized name
+            for item in raw_files:
+                if not isinstance(item, dict):
+                    continue
+                if item.get('pywebviewFullPath') or item.get('path'):
+                    continue
+                raw_name = item.get('name', '')
+                if not raw_name:
+                    continue
+                name_nfc = unicodedata.normalize('NFC', raw_name)
+                for dnd_item in list(dnd_items):
+                    dnd_name = unicodedata.normalize('NFC', urllib.parse.unquote(dnd_item[0]))
+                    if name_nfc == dnd_name:
+                        val = urllib.parse.unquote(dnd_item[1])
+                        if isinstance(val, str) and os.path.isabs(val):
+                            norm_val = unicodedata.normalize('NFC', val)
+                            if norm_val not in paths:
+                                paths.append(norm_val)
+                        try:
+                            _dnd_state['paths'].remove(dnd_item)
+                        except (ValueError, KeyError):
+                            pass
+                        dnd_items.remove(dnd_item)
+                        break
+
+            # If paths is still empty and there are items in _dnd_state
+            if not paths and dnd_items:
+                for dnd_item in list(dnd_items):
+                    val = urllib.parse.unquote(dnd_item[1])
+                    if isinstance(val, str) and os.path.isabs(val):
+                        norm_val = unicodedata.normalize('NFC', val)
+                        if norm_val not in paths:
+                            paths.append(norm_val)
+                try:
+                    _dnd_state['paths'].clear()
+                except Exception:
+                    pass
+
         return paths
 
     def _folder_drop_mode(self):
@@ -542,11 +655,17 @@ class ApiWrapper:
         paths = self._paths_from_native_drop(event)
         if not paths:
             if self._window:
-                ui_bridge.ui_set_folder_status(
-                    self._window,
-                    'Не удалось получить полный путь. Перетащите объект из Finder или выберите его кнопкой.',
-                    'error',
-                )
+                if dialog_type == 'anonymize_folder':
+                    ui_bridge.ui_set_folder_status(
+                        self._window,
+                        'Не удалось получить полный путь. Перетащите объект из Finder или выберите его кнопкой.',
+                        'error',
+                    )
+                else:
+                    ui_bridge.ui_alert(
+                        self._window,
+                        'Не удалось определить путь к перетащенному файлу. Попробуйте нажать на область выбора файлов для открытия Finder.'
+                    )
             return
         effective_type = self._folder_drop_mode() if dialog_type == 'anonymize_folder' else dialog_type
         self.files_dropped(effective_type, paths)

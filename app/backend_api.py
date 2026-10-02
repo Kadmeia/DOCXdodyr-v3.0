@@ -2066,6 +2066,8 @@ class BackendApi:
         _private_status(f"DEBUG: Переданы пользовательские замены: {len(custom_replacements_list)} шт.")
 
         suffix = file_p.suffix.lower()
+        if suffix == ".doc":
+            raise ValueError("Устаревший бинарный формат .doc не поддерживается. Сохраните документ как .docx в Word перед обработкой.")
         if suffix == ".xls":
             raise ValueError("Устаревший бинарный формат .xls не поддерживается. Сохраните документ как .xlsx в Excel перед обработкой.")
         is_word = suffix in (".docx", ".docm")
@@ -2416,8 +2418,32 @@ class BackendApi:
         # written below the caller-provided directory.  Keeping this decision
         # here (instead of copying files first) also preserves the existing
         # single-file API and prevents accidental writes next to user files.
-        output_root = Path(output_dir) if output_dir is not None else file_p.parent
-        output_root.mkdir(parents=True, exist_ok=True)
+        if output_dir is not None:
+            output_root = Path(output_dir)
+            output_root.mkdir(parents=True, exist_ok=True)
+            test_probe = output_root / f".docxdodyr_write_test_{uuid.uuid4().hex[:8]}"
+            test_probe.touch()
+            test_probe.unlink(missing_ok=True)
+        else:
+            output_root = file_p.parent
+            try:
+                output_root.mkdir(parents=True, exist_ok=True)
+                test_probe = output_root / f".docxdodyr_write_test_{uuid.uuid4().hex[:8]}"
+                try:
+                    test_probe.touch()
+                    test_probe.unlink(missing_ok=True)
+                except (OSError, PermissionError):
+                    raise PermissionError("Directory not writable")
+            except (OSError, PermissionError):
+                fallback_dir = Path.home() / "Downloads" / "DOCXdodyr_Output"
+                fallback_dir.mkdir(parents=True, exist_ok=True)
+                logger.warning(
+                    "Папка %s недоступна для записи (образ диска DMG или защищенная папка). Сохраняем результат в: %s",
+                    output_root, fallback_dir
+                )
+                output_root = fallback_dir
+        self._last_output_dir = str(output_root)
+
         if is_excel:
             safe_name = mask_filename(file_p.name, xlsx_placeholder)
             output_base = output_root / safe_name
@@ -3956,8 +3982,11 @@ class Worker:
                             processed_file=file_path_str,
                             error=safe_err,
                         )
+                    display_err = str(e) if isinstance(e, (ValueError, PermissionError, FileNotFoundError)) else safe_err
+                    from log_sanitizer import sanitize_user_paths
+                    display_err = sanitize_user_paths(display_err)
                     _cleaner_win = getattr(self.cleaner, '_window', None)
-                    if _cleaner_win: ui_bridge.ui_alert(_cleaner_win, f"Ошибка при обработке {file_path.name}")
+                    if _cleaner_win: ui_bridge.ui_alert(_cleaner_win, f"Ошибка при обработке {file_path.name}:\n{display_err}")
                     _private_status(f"{error_title}: {error_message}\n{traceback.format_exc()}")
 
                 self.cleaner.update_progress(i + 1, num_files, f"Завершено: {file_path.name}")

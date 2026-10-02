@@ -89,8 +89,11 @@ def test_stage09_exe_binary_presence_and_pe_structure():
     # Проверка веб-ресурсов в dist
     web_candidates = [
         DIST_DIR / "DOCXdodyr" / "web" / "index.html",
+        DIST_DIR / "DOCXdodyr" / "_internal" / "web" / "index.html",
         DIST_DIR / "DOCXdodyr.app" / "Contents" / "Resources" / "web" / "index.html",
         DIST_DIR / "DOCXdodyr.app" / "Contents" / "MacOS" / "web" / "index.html",
+        DIST_DIR / "DOCXdodyr-arm64.app" / "Contents" / "Resources" / "web" / "index.html",
+        DIST_DIR / "DOCXdodyr-x86_64.app" / "Contents" / "Resources" / "web" / "index.html",
     ]
     assert any(p.exists() for p in web_candidates), f"Веб-интерфейс отсутствует в дистрибутиве: {web_candidates}"
 

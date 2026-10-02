@@ -23,11 +23,11 @@ from scripts import package_release
 
 
 def test_stage10_version_synchronization():
-    """Проверяет синхронизацию канонической версии (3.0.1) по всем манифестам и конфигурациям."""
-    audit = package_release.check_version_consistency("3.0.1")
+    """Проверяет синхронизацию канонической версии (3.0.2) по всем манифестам и конфигурациям."""
+    audit = package_release.check_version_consistency("3.0.2")
     assert audit["all_matched"] is True, f"Несоответствие версий: {audit['mismatches']}"
-    assert version.__version__ == "3.0.1"
-    assert version.VERSION_TUPLE == (3, 0, 1)
+    assert version.__version__ == "3.0.2"
+    assert version.VERSION_TUPLE == (3, 0, 2)
     assert version.APP_BUNDLE_ID == "ru.docxdodyr.desktop"
     assert version.APP_ID_WINDOWS == "DOCXdodyr.Desktop.3.0"
 
@@ -69,7 +69,7 @@ def test_stage10_sbom_cyclonedx_contract():
     assert sbom["bomFormat"] == "CycloneDX"
     assert sbom["specVersion"] == "1.5"
     assert sbom["metadata"]["component"]["name"] == "DOCXdodyr"
-    assert sbom["metadata"]["component"]["version"] == "3.0.1"
+    assert sbom["metadata"]["component"]["version"] == "3.0.2"
 
     components = sbom["components"]
     assert len(components) >= 15, f"Ожидалось не менее 15 компонентов в SBOM, получено {len(components)}"
@@ -124,7 +124,7 @@ def test_stage10_package_release_audit_and_checksums(tmp_path, monkeypatch):
     (tmp_path / "synthetic.zip").write_bytes(b"synthetic artifact")
     package_release.generate_sha256sums(tmp_path)
     audit = package_release.run_full_release_candidate_audit()
-    assert audit["version"] == "3.0.1"
+    assert audit["version"] == "3.0.2"
     assert audit["version_check"]["all_matched"] is True
     assert audit["legal_check"]["all_present"] is True
     assert audit["docs_check"]["all_present"] is True
@@ -153,7 +153,7 @@ def test_stage10_github_release_workflow():
 
 
 def test_stage10_cli_version_contract():
-    """Проверяет, что флаг CLI --version возвращает каноническую версию 3.0.1."""
+    """Проверяет, что флаг CLI --version возвращает каноническую версию 3.0.2."""
     res = subprocess.run(
         [sys.executable, str(REPO_ROOT / "main.py"), "--version"],
         capture_output=True,
@@ -161,7 +161,7 @@ def test_stage10_cli_version_contract():
         cwd=str(REPO_ROOT),
     )
     assert res.returncode == 0
-    assert "DOCXdodyr 3.0.1" in res.stdout
+    assert "DOCXdodyr 3.0.2" in res.stdout
 
 
 def test_stage10_clean_working_tree_against_secrets():

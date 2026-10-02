@@ -68,17 +68,16 @@ def test_pdf_processing_without_formats_leaves_no_reconcile_temp(tmp_path):
     api.save_markdown = False
     api.open_output_folder = False
 
-    corpus_pdfs = list(Path("tests/fresh_corpus_stage09_round3").glob("*.pdf"))
+    from docx import Document
+    from pdf_convert import convert_docx_text_to_pdf
+
     pdf_path = tmp_path / "sample.pdf"
-    if corpus_pdfs:
-        import shutil
-        shutil.copy(corpus_pdfs[0], pdf_path)
-    else:
-        doc = fitz.open()
-        page = doc.new_page()
-        page.insert_text((50, 50), "Иванов Иван Иванович, паспорт 4509 123456")
-        doc.save(str(pdf_path))
-        doc.close()
+    docx_temp = tmp_path / "sample_temp.docx"
+    doc = Document()
+    doc.add_paragraph("Иванов Иван Иванович, паспорт 4509 123456")
+    doc.save(str(docx_temp))
+    assert convert_docx_text_to_pdf(docx_temp, pdf_path) is True
+    docx_temp.unlink(missing_ok=True)
 
     worker = Worker([str(pdf_path)], api)
     try:

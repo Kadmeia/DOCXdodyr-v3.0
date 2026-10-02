@@ -15,9 +15,9 @@
     ],
     "component": {
       "type": "application",
-      "bom-ref": "docxdodyr@3.0.1",
+      "bom-ref": "docxdodyr@3.0.2",
       "name": "DOCXdodyr",
-      "version": "3.0.1",
+      "version": "3.0.2",
       "description": "Локальное приложение для интеллектуального обезличивания документов, очистки метаданных и правового анализа",
       "licenses": [
         {
@@ -26,7 +26,7 @@
           }
         }
       ],
-      "purl": "pkg:generic/docxdodyr@3.0.1"
+      "purl": "pkg:generic/docxdodyr@3.0.2"
     }
   },
   "components": [

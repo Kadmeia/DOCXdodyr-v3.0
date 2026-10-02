@@ -1,11 +1,11 @@
-# DOCXдодыр (DOCXdodyr) v3.0.1
+# DOCXдодыр (DOCXdodyr) v3.0.2
 
 <p align="center">
   <strong>Локальное десктопное приложение для интеллектуального обезличивания, маскирования персональных данных (ПДн) и очистки метаданных в документах</strong>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Версия-3.0.1-blue.svg" alt="Версия 3.0.1">
+  <img src="https://img.shields.io/badge/Версия-3.0.2-blue.svg" alt="Версия 3.0.2">
   <img src="https://img.shields.io/badge/Python-3.11-3776AB.svg?logo=python&logoColor=white" alt="Python 3.11">
   <img src="https://img.shields.io/badge/Платформы-Windows%20%7C%20macOS-informational.svg" alt="Платформы">
   <img src="https://img.shields.io/badge/Приватность-100%25%20Local--First-brightgreen.svg" alt="100% Local-First">
@@ -132,7 +132,7 @@ DOCXdodyr/
 ├── main.py               # Точка входа в приложение (pywebview GUI)
 ├── run_windows.bat       # Скрипт запуска в 1 клик для Windows
 ├── run_macos.command     # Скрипт запуска в 1 клик для macOS
-└── version.py            # Единый источник версии (v3.0.1)
+└── version.py            # Единый источник версии (v3.0.2)
 ```
 
 Подробное описание модулей доступно в файле [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md).

@@ -68,6 +68,7 @@ class Python311RuntimeTests(unittest.TestCase):
                 os.utime(source, ns=(100, 100))
             self.assertEqual(check(), 0)
 
+    @unittest.skipIf(sys.platform == 'win32', 'macOS launcher tests are not supported on Windows')
     @unittest.skipUnless(shutil.which('bash'), 'POSIX shell launcher requires bash')
     def test_macos_launcher_preserves_spaced_arguments_and_exit_status(self):
         with tempfile.TemporaryDirectory(prefix='docxdodyr launcher ') as tmp:
@@ -84,6 +85,7 @@ class Python311RuntimeTests(unittest.TestCase):
             self.assertEqual(result.returncode, 17, result.stderr)
             self.assertEqual((root / 'received.txt').read_text().splitlines(), ['main.py', 'a document.docx', 'dir with spaces/b.xlsx'])
 
+    @unittest.skipIf(sys.platform == 'win32', 'macOS launcher tests are not supported on Windows')
     @unittest.skipUnless(shutil.which('bash'), 'POSIX shell launcher requires bash')
     def test_macos_launcher_stops_for_wrong_existing_runtime(self):
         with tempfile.TemporaryDirectory(prefix='docxdodyr launcher ') as tmp:

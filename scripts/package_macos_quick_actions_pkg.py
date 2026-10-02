@@ -67,13 +67,56 @@ def package_quick_actions_pkg(
         materialize_quick_actions(services, app_path=Path("/Applications/DOCXdodyr.app"))
         if component_pkg.exists():
             component_pkg.unlink()
-        if final_pkg.exists():
-            final_pkg.unlink()
+        import plistlib
+
+        components_data = [
+            {
+                "RootRelativeBundlePath": "Applications/DOCXdodyr.app",
+                "BundleIsRelocatable": False,
+                "BundleIsVersionChecked": False,
+                "BundleHasStrictIdentifier": True,
+                "BundleOverwriteAction": "upgrade",
+            },
+            {
+                "RootRelativeBundlePath": "Library/Services/Обезличить DOCXdodyr.workflow",
+                "BundleIsRelocatable": False,
+                "BundleIsVersionChecked": False,
+                "BundleOverwriteAction": "upgrade",
+            },
+            {
+                "RootRelativeBundlePath": "Library/Services/Восстановить DOCXdodyr.workflow",
+                "BundleIsRelocatable": False,
+                "BundleIsVersionChecked": False,
+                "BundleOverwriteAction": "upgrade",
+            },
+        ]
+        component_plist = stage.parent / f".DOCXdodyr-{arch}-components.plist"
+        with open(component_plist, "wb") as f:
+            plistlib.dump(components_data, f)
+
+        scripts_dir = stage.parent / f".DOCXdodyr-{arch}-scripts"
+        scripts_dir.mkdir(parents=True, exist_ok=True)
+        postinstall = scripts_dir / "postinstall"
+        postinstall.write_text(
+            "#!/bin/sh\n"
+            "# Force LaunchServices and Applications folder refresh\n"
+            "touch /Applications 2>/dev/null || true\n"
+            "if [ -d \"/Applications/DOCXdodyr.app\" ]; then\n"
+            "    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/DOCXdodyr.app 2>/dev/null || true\n"
+            "fi\n"
+            "exit 0\n",
+            encoding="utf-8",
+        )
+        postinstall.chmod(0o755)
 
         pkgbuild = [
             "pkgbuild",
             "--root",
             str(stage),
+            "--component-plist",
+            str(component_plist),
+            "--scripts",
+            str(scripts_dir),
             "--identifier",
             f"ru.docxdodyr.desktop.quick-actions.{arch}",
             "--version",
@@ -96,6 +139,10 @@ def package_quick_actions_pkg(
         shutil.rmtree(stage, ignore_errors=True)
         if component_pkg.exists():
             component_pkg.unlink()
+        if 'component_plist' in locals() and component_plist.exists():
+            component_plist.unlink()
+        if 'scripts_dir' in locals() and scripts_dir.exists():
+            shutil.rmtree(scripts_dir, ignore_errors=True)
 
 
 def main(argv: list[str] | None = None) -> int:

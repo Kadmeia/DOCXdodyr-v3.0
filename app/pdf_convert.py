@@ -419,7 +419,11 @@ def convert_docx_text_to_pdf(docx_path, pdf_path):
         import fitz
         from docx import Document
 
+        windir = os.environ.get("WINDIR") or os.environ.get("SYSTEMROOT") or r"C:\Windows"
         font_candidates = (
+            os.path.join(windir, "Fonts", "arial.ttf"),
+            os.path.join(windir, "Fonts", "times.ttf"),
+            os.path.join(windir, "Fonts", "calibri.ttf"),
             r"C:\Windows\Fonts\arial.ttf",
             r"C:\Windows\Fonts\times.ttf",
             r"C:\Windows\Fonts\calibri.ttf",
@@ -573,7 +577,6 @@ def convert_to_pdf(source_path, pdf_path):
     if sys.platform == "win32":
         if convert_docx_to_pdf_word(source_path, pdf_path):
             return True
-        return False
     return convert_docx_text_to_pdf(source_path, pdf_path)
 
 def extract_text_from_pdf(pdf_path: str) -> str:
