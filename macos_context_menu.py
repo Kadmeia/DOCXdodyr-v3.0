@@ -169,8 +169,9 @@ def _workflow_document(action: str, launcher_path: Path) -> dict:
     # frozen binary directly. Do not route this through /usr/bin/python3:
     # modern macOS installations are not required to ship system Python.
     executable = launcher_path / "Contents" / "MacOS" / APP_NAME
+    executable_str = executable.as_posix() if hasattr(executable, "as_posix") else str(executable).replace("\\", "/")
     script = (
-        f'exec {shlex_quote(str(executable))} {ACTION_FLAGS[action]} '
+        f'exec {shlex_quote(executable_str)} {ACTION_FLAGS[action]} '
         '--no-open-output -- "$@"\n'
     )
     # This is the on-disk schema written by Automator for a Service.  The

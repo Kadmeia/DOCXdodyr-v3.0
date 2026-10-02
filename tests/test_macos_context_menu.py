@@ -25,6 +25,9 @@ def _fake_app(tmp_path: Path) -> Path:
 
 
 def test_build_command_uses_argv_and_preserves_hostile_finder_names(tmp_path):
+    import sys
+    if sys.platform == "win32":
+        pytest.skip("POSIX filename with quotes not supported on Windows")
     app = _fake_app(tmp_path)
     selected = tmp_path / 'Папка с пробелами; $(touch PWNED)' / 'a "quoted".docx'
     selected.parent.mkdir()
