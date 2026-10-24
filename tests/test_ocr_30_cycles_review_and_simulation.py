@@ -24,7 +24,6 @@ import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import numpy as np
 import pytest
 from PIL import Image, ImageDraw, ImageFont
 
@@ -85,10 +84,18 @@ def _create_synthetic_scan_image(
         y_offset += font_size + 16
 
     if noise:
-        arr = np.array(img)
-        gauss = np.random.normal(0, 8, arr.shape)
-        noisy = np.clip(arr + gauss, 0, 255).astype(np.uint8)
-        img = Image.fromarray(noisy)
+        import random
+        pixels = img.load()
+        for _ in range(int(width * height * 0.01)):
+            rx = random.randint(0, width - 1)
+            ry = random.randint(0, height - 1)
+            delta = random.randint(-25, 25)
+            r, g, b = pixels[rx, ry]
+            pixels[rx, ry] = (
+                max(0, min(255, r + delta)),
+                max(0, min(255, g + delta)),
+                max(0, min(255, b + delta)),
+            )
 
     if angle != 0.0:
         img = img.rotate(angle, expand=True, fillcolor=(255, 255, 255))
