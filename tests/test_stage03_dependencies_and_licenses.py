@@ -13,19 +13,19 @@ def test_version_single_source_of_truth():
     """Проверка единого источника версии и идентификаторов приложения."""
     import version
 
-    assert version.__version__ == "3.0.2"
+    assert version.__version__ == "3.1.0"
     assert version.APP_NAME == "DOCXdodyr"
     assert version.APP_DISPLAY_NAME == "DOCXдодыр"
-    assert version.APP_TITLE == "DOCXдодыр v3.0.2"
+    assert version.APP_TITLE == "DOCXдодыр v3.1.0"
     assert version.APP_BUNDLE_ID == "ru.docxdodyr.desktop"
-    assert version.APP_ID_WINDOWS == "DOCXdodyr.Desktop.3.0"
-    assert version.VERSION_TUPLE == (3, 0, 2)
+    assert version.APP_ID_WINDOWS == "DOCXdodyr.Desktop.3.1"
+    assert version.VERSION_TUPLE == (3, 1, 0)
     assert version.SUPPORTED_PYTHON_RECOMMENDED == (3, 11)
 
     info = version.get_version_info()
-    assert info["version"] == "3.0.2"
+    assert info["version"] == "3.1.0"
     assert info["bundle_id"] == "ru.docxdodyr.desktop"
-    assert info["app_id_windows"] == "DOCXdodyr.Desktop.3.0"
+    assert info["app_id_windows"] == "DOCXdodyr.Desktop.3.1"
     assert "DOCXдодыр" in info["title"]
 
 
@@ -36,7 +36,7 @@ def test_backend_api_exposes_app_info():
     api = BackendApi()
     info = api.get_app_info()
     assert isinstance(info, dict)
-    assert info["version"] == "3.0.2"
+    assert info["version"] == "3.1.0"
     assert info["app_name"] == "DOCXdodyr"
     assert info["bundle_id"] == "ru.docxdodyr.desktop"
 
@@ -44,9 +44,9 @@ def test_backend_api_exposes_app_info():
 def test_ui_branding_version_synchronized():
     """Проверка синхронизации версии в web/index.html и web/script.js."""
     index_html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
-    assert "<title>DOCXдодыр v3.0</title>" in index_html
+    assert "<title>DOCXдодыр v3.1</title>" in index_html
     assert 'id="app-version-badge"' in index_html
-    assert "v3.0" in index_html
+    assert "v3.1" in index_html
 
     script_js = (ROOT / "web" / "script.js").read_text(encoding="utf-8")
     assert "get_app_info" in script_js
@@ -174,7 +174,7 @@ def test_sbom_is_valid_cyclonedx_json():
     assert data.get("bomFormat") == "CycloneDX"
     assert data.get("specVersion") == "1.5"
     metadata = data.get("metadata", {})
-    assert metadata.get("component", {}).get("version") == "3.0.2"
+    assert metadata.get("component", {}).get("version") == "3.1.0"
 
     components = data.get("components", [])
     assert len(components) >= 14, "SBOM должен содержать все ключевые библиотеки ядра и платформы"

@@ -100,7 +100,9 @@ FORMAT_REGISTRY = {
         "extensions": [
             ".docx", ".docm",
             ".xlsx", ".xlsm",
+            ".pptx", ".pptm",
             ".pdf",
+            ".txt", ".log", ".csv", ".md", ".json",
             ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp"
         ],
         "mime_types": [
@@ -108,10 +110,13 @@ FORMAT_REGISTRY = {
             "application/vnd.ms-word.document.macroEnabled.12",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "application/vnd.ms-excel.sheet.macroEnabled.12",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.ms-powerpoint.presentation.macroEnabled.12",
             "application/pdf",
+            "text/plain", "text/csv", "text/markdown", "application/json",
             "image/jpeg", "image/png", "image/bmp", "image/tiff", "image/webp"
         ],
-        "description": "Документы Word, Excel, PDF и изображения",
+        "description": "Документы Word, Excel, PowerPoint, PDF, текстовые файлы и изображения",
     },
     "ocr": {
         "extensions": [
@@ -125,23 +130,32 @@ FORMAT_REGISTRY = {
         "description": "PDF-сканы и изображения",
     },
     "restore": {
-        "extensions": [".docx", ".docm", ".xlsx", ".xlsm"],
-        "mime_types": [
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/vnd.ms-word.document.macroEnabled.12",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "application/vnd.ms-excel.sheet.macroEnabled.12"
+        "extensions": [
+            ".docx", ".docm",
+            ".xlsx", ".xlsm",
+            ".pptx", ".pptm",
+            ".txt", ".log", ".csv", ".md", ".json"
         ],
-        "description": "Обработанные документы Word и Excel",
-    },
-    "hidden_inspect": {
-        "extensions": [".docx", ".docm", ".xlsx", ".xlsm", ".pptx", ".pdf"],
         "mime_types": [
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "application/vnd.ms-word.document.macroEnabled.12",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "application/vnd.ms-excel.sheet.macroEnabled.12",
             "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.ms-powerpoint.presentation.macroEnabled.12",
+            "text/plain", "text/csv", "text/markdown", "application/json"
+        ],
+        "description": "Обработанные документы Word, Excel, PowerPoint и текстовые файлы",
+    },
+    "hidden_inspect": {
+        "extensions": [".docx", ".docm", ".xlsx", ".xlsm", ".pptx", ".pptm", ".pdf"],
+        "mime_types": [
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-word.document.macroEnabled.12",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-excel.sheet.macroEnabled.12",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.ms-powerpoint.presentation.macroEnabled.12",
             "application/pdf"
         ],
         "description": "Документы Office и PDF для инспекции скрытых данных",

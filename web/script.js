@@ -120,10 +120,23 @@ function openFolderDialog(type = 'anonymize_folder') {
         if (typeof api.open_folder_dialog === 'function') {
             const toggle = document.getElementById('cb-continue-folder');
             const selectedType = toggle && toggle.checked ? 'continue_folder' : type;
-            api.open_folder_dialog(selectedType);
+            try {
+                const res = api.open_folder_dialog(selectedType);
+                if (res && typeof res.catch === 'function') {
+                    res.catch(err => {
+                        console.error('Ошибка вызова open_folder_dialog:', err);
+                        setFolderStatus('Ошибка вызова диалога выбора папки', 'error');
+                    });
+                }
+            } catch (err) {
+                console.error('Синхронная ошибка open_folder_dialog:', err);
+                setFolderStatus('Не удалось открыть диалог выбора папки', 'error');
+            }
         } else {
             setFolderStatus('Папочный режим недоступен в этой версии приложения', 'error');
         }
+    } else {
+        setFolderStatus('Инициализация интерфейса pywebview... Попробуйте снова через секунду.', 'error');
     }
 }
 
@@ -204,6 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const cbDocx = document.getElementById('cb-save-docx') || document.getElementById('cb-save-original');
                 const cbPdf = document.getElementById('cb-save-pdf');
                 const cbMd = document.getElementById('cb-save-md');
+                const cbTxt = document.getElementById('cb-save-txt');
                 const cbIrr = document.getElementById('cb-irreversible-pdf');
                 const cbDec = document.getElementById('cb-save-decoder');
                 const cbAuto = document.getElementById('cb-auto-decoder');
@@ -219,6 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (cbPdf && typeof settings.save_pdf === 'boolean') cbPdf.checked = settings.save_pdf;
                 if (cbMd && typeof settings.save_markdown === 'boolean') cbMd.checked = settings.save_markdown;
+                if (cbTxt && typeof settings.save_text === 'boolean') cbTxt.checked = settings.save_text;
                 if (cbIrr && typeof settings.irreversible_pdf === 'boolean') cbIrr.checked = settings.irreversible_pdf;
                 if (cbDec) cbDec.checked = settings.save_decoder;
                 if (cbAuto && typeof settings.auto_decoder === 'boolean') cbAuto.checked = settings.auto_decoder;
@@ -235,6 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const cbDocx = document.getElementById('cb-save-docx') || document.getElementById('cb-save-original');
             const cbPdf = document.getElementById('cb-save-pdf');
             const cbMd = document.getElementById('cb-save-md');
+            const cbTxt = document.getElementById('cb-save-txt');
             const cbIrr = document.getElementById('cb-irreversible-pdf');
             const cbDec = document.getElementById('cb-save-decoder');
             const cbAuto = document.getElementById('cb-auto-decoder');
@@ -246,6 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 save_original: false,
                 save_pdf: cbPdf ? cbPdf.checked : false,
                 save_markdown: cbMd ? cbMd.checked : false,
+                save_text: cbTxt ? cbTxt.checked : false,
                 irreversible_pdf: cbIrr ? cbIrr.checked : false,
                 save_decoder: cbDec ? cbDec.checked : false,
                 auto_decoder: cbAuto ? cbAuto.checked : true,
@@ -256,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    ['cb-save-docx', 'cb-save-original', 'cb-save-pdf', 'cb-save-md', 'cb-irreversible-pdf', 'cb-save-decoder', 'cb-auto-decoder', 'cb-qwen-postprocess', 'sel-ocr-lang'].forEach(id => {
+    ['cb-save-docx', 'cb-save-original', 'cb-save-pdf', 'cb-save-md', 'cb-save-txt', 'cb-irreversible-pdf', 'cb-save-decoder', 'cb-auto-decoder', 'cb-qwen-postprocess', 'sel-ocr-lang'].forEach(id => {
         const el = document.getElementById(id);
         if(el) {
             el.addEventListener('change', updateSettings);

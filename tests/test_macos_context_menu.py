@@ -174,6 +174,9 @@ def test_system_uninstall_only_removes_owned_workflows(tmp_path):
 
 
 def test_package_script_isolated_and_includes_installer(monkeypatch, tmp_path):
+    import sys
+    if sys.platform == "win32":
+        pytest.skip("Symlink creation requires administrative privileges on Windows")
     from scripts import package_macos_quick_actions as packager
 
     app = _fake_app(tmp_path)
@@ -255,6 +258,9 @@ def test_dmg_packager_normalizes_arch_named_app(monkeypatch, tmp_path):
 
 
 def test_pkg_packager_marks_unsigned_preview_and_rejects_wrong_signer(monkeypatch, tmp_path):
+    import sys
+    if sys.platform == "win32":
+        pytest.skip("Symlink creation requires administrative privileges on Windows")
     from scripts import package_macos_quick_actions_pkg as packager
 
     source = tmp_path / "DOCXdodyr-arm64.app"

@@ -29,6 +29,7 @@
 | **fpdf2** | 2.8.4 | LGPL-3.0-or-later | Формирование PDF-отчетов с Legal Design стилизацией |
 | **pyobjc** (включая **pyobjc-core**, **pyobjc-framework-Cocoa**, **pyobjc-framework-Quartz**, **pyobjc-framework-Vision**) | 11.1 | MIT License | Вызов нативного Apple Vision Framework и системных API на macOS |
 | **docx2pdf** | 0.1.8 | MIT License | Интеграция с Microsoft Word для конвертации документов на Windows |
+| **indra-ocr** | 1.1.2 | Apache-2.0 / OpenRAIL-M | Опциональный нейросетевой OCR (ONNX 1M param, автоповорот и разметка) |
 
 ---
 

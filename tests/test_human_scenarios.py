@@ -139,7 +139,7 @@ def test_user_settings_and_restore_file_selection_are_forwarded(monkeypatch, tmp
     wrapper.open_file_dialog("restore_doc")
     assert wrapper._api.restore_doc_paths == [str(document), str(decoder)]
     assert "lbl-restore-doc" in window.js_calls[-1]
-    assert window.dialog_calls[-1][1]["file_types"] == ("Документы (*.docx;*.docm;*.xlsx;*.xlsm)",)
+    assert window.dialog_calls[-1][1]["file_types"] == ("Документы (*.docx;*.docm;*.xlsx;*.xlsm;*.pptx;*.pptm;*.txt;*.log;*.csv;*.md;*.json)",)
 
     wrapper.open_file_dialog("restore_json")
     assert wrapper._api.restore_json_paths == [str(document), str(decoder)]

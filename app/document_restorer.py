@@ -851,9 +851,65 @@ class DocumentRestorer:
         self.log(f"Восстановлено замен в Markdown: {total_replacements}")
         return True, f"Сохранено: {output_path}"
 
+    def restore_text(self, text_path, output_path=None):
+        """Восстанавливает текстовый документ (.txt, .log, .csv, .json). Возвращает (success, message)."""
+        self._verify_document(text_path)
+        text_path = Path(text_path)
+        if output_path is None:
+            output_path = text_path.parent / f"{text_path.stem}_восстановлено{text_path.suffix}"
+        else:
+            output_path = Path(output_path)
+
+        encoding = "utf-8"
+        try:
+            raw_bytes = text_path.read_bytes()
+            try:
+                text = raw_bytes.decode("utf-8")
+            except UnicodeDecodeError:
+                text = raw_bytes.decode("cp1251", errors="replace")
+                encoding = "cp1251"
+        except Exception as e:
+            return False, f"Не удалось прочитать текстовый файл: {e}"
+
+        total_replacements = 0
+        if self.mapping_dict and text:
+            keys = sorted(self.mapping_dict.keys(), key=len, reverse=True)
+            pattern = re.compile("|".join(re.escape(k) for k in keys))
+
+            def replace(match):
+                value = self.mapping_dict[match.group(0)]
+                if isinstance(value, str):
+                    return value
+                fallback = value.get("case", "NOMINATIVE")
+                target_case = self.case_resolver.resolve(text, match.start(), fallback)
+                return self.inflector.inflect(value, target_case)
+
+            restored, total_replacements = pattern.subn(replace, text)
+        else:
+            restored = text
+
+        try:
+            output_path.write_text(restored, encoding=encoding)
+        except Exception as e:
+            return False, f"Ошибка сохранения текстового файла: {e}"
+
+        self.log(f"Восстановлено замен в тексте: {total_replacements}")
+        return True, f"Сохранено: {output_path}"
+
+    def restore_pptx(self, pptx_path, output_path=None):
+        """Восстанавливает презентацию PowerPoint (.pptx, .pptm). Возвращает (success, message)."""
+        self._verify_document(pptx_path)
+        from presentation_anonymizer import restore_pptx
+        pptx_path = Path(pptx_path)
+        if output_path is None:
+            output_path = pptx_path.parent / f"{pptx_path.stem}_восстановлено{pptx_path.suffix}"
+        else:
+            output_path = Path(output_path)
+        return restore_pptx(pptx_path, output_path, self.mapping_dict)
+
 
 def restore_document(doc_path: str | Path, decoder_path: str | Path | None = None, output_path: str | Path | None = None) -> Path:
-    """Восстанавливает обезличенный документ (.docx/.xlsx/.md) с криптографической проверкой привязки дешифратора."""
+    """Восстанавливает обезличенный документ (.docx/.xlsx/.pptx/.md/.txt) с криптографической проверкой привязки дешифратора."""
     doc_p = Path(doc_path).resolve(strict=True)
     if decoder_path is None:
         dec_p = find_decoder_near_document(doc_p)
@@ -872,16 +928,23 @@ def restore_document(doc_path: str | Path, decoder_path: str | Path | None = Non
             raise ValueError("Выбранный дешифратор не привязан к документу")
     data = json.loads(dec_p.read_text(encoding="utf-8"))
     restorer = DocumentRestorer(data)
-    if doc_p.suffix.lower() in {".docx", ".docm"}:
+    suffix = doc_p.suffix.lower()
+    if suffix in {".docx", ".docm"}:
         target_out = Path(output_path) if output_path else doc_p.parent / f"{doc_p.stem}_восстановлено{doc_p.suffix}"
         ok, msg = restorer.restore_docx(doc_p, target_out)
-    elif doc_p.suffix.lower() in {".xlsx", ".xlsm"}:
+    elif suffix in {".xlsx", ".xlsm"}:
         target_out = Path(output_path) if output_path else doc_p.parent / f"{doc_p.stem}_восстановлено{doc_p.suffix}"
         ok, msg = restorer.restore_excel(doc_p, target_out)
-    elif doc_p.suffix.lower() == ".md":
+    elif suffix in {".pptx", ".pptm"}:
+        target_out = Path(output_path) if output_path else doc_p.parent / f"{doc_p.stem}_восстановлено{doc_p.suffix}"
+        ok, msg = restorer.restore_pptx(doc_p, target_out)
+    elif suffix == ".md":
         target_out = Path(output_path) if output_path else doc_p.parent / f"{doc_p.stem}_восстановлено{doc_p.suffix}"
         ok, msg = restorer.restore_markdown(doc_p, target_out)
-    elif doc_p.suffix.lower() == ".pdf":
+    elif suffix in {".txt", ".log", ".csv", ".json"}:
+        target_out = Path(output_path) if output_path else doc_p.parent / f"{doc_p.stem}_восстановлено{doc_p.suffix}"
+        ok, msg = restorer.restore_text(doc_p, target_out)
+    elif suffix == ".pdf":
         raise ValueError("Восстановление PDF не поддерживается: формат является необратимым")
     else:
         raise ValueError(f"Неподдерживаемый формат для восстановления: {doc_p.suffix}")

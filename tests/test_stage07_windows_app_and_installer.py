@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 from PIL import Image
+import version
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ASSETS_DIR = REPO_ROOT / "assets"
@@ -103,7 +104,7 @@ def test_inno_setup_script_structure_and_app_id():
         assert ext in iss_content, f"Инсталлятор должен регистрировать ассоциацию для {ext}"
 
     # 5. Регистрация AppUserModelId для панели задач
-    assert "Software\\Classes\\AppUserModelId\\DOCXdodyr.Desktop.3.0" in iss_content
+    assert f"Software\\Classes\\AppUserModelId\\{version.APP_ID_WINDOWS}" in iss_content
 
     # 6. Проверка и детекция WebView2 Evergreen Runtime в [Code]
     assert "function IsWebView2Installed" in iss_content, "Скрипт должен содержать функцию проверки WebView2"
@@ -116,7 +117,7 @@ def test_windows_ocr_backend_uses_supported_local_engines_only():
     import ocr_backend
 
     backends = ocr_backend.available_backend_names("win32")
-    assert set(backends).issubset({"tesseract", "paddleocr"})
+    assert set(backends).issubset({"tesseract", "paddleocr", "indra"})
 
     # Проверка чистоты лицензии в THIRD_PARTY_NOTICES.md
     notices_path = REPO_ROOT / "THIRD_PARTY_NOTICES.md"

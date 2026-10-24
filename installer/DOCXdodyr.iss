@@ -1,9 +1,9 @@
-; Скрипт создания установщика Inno Setup для DOCXдодыр v3.0
+; Скрипт создания установщика Inno Setup для DOCXдодыр v3.1
 ; Конфигурация: Windows x64 per-user (без прав администратора) с WebView2 детекцией
 
 #define MyAppName "DOCXдодыр"
 #ifndef MyAppVersion
-#define MyAppVersion "3.0.2"
+#define MyAppVersion "3.1.0"
 #endif
 #define MyAppPublisher "DOCXdodyr Contributors"
 #define MyAppURL "https://github.com/Kadmeia/DOCXdodyr"
@@ -68,10 +68,8 @@ Name: "fileassoc_xlsx"; Description: "Ассоциировать с таблиц
 Name: "fileassoc_pdf"; Description: "Ассоциировать с документами PDF (*.pdf)"; GroupDescription: "Ассоциации файлов:"
 
 [Files]
-; Исполняемые файлы и ресурсы onedir-сборки PyInstaller
+; Исполняемые файлы и ресурсы onedir-сборки PyInstaller (включая встроенные офлайн-модели Indra OCR в _internal\resources)
 Source: "..\dist\DOCXdodyr\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; Встроенные языковые модели Tesseract OCR (rus + eng) для автономной работы без скачивания
-Source: "..\resources\tessdata\*"; DestDir: "{app}\resources\tessdata"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"
@@ -80,8 +78,8 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilen
 
 [Registry]
 ; Регистрация AppUserModelId для корректного отображения иконки и уведомлений в панели задач Windows 10/11
-Root: HKCU; Subkey: "Software\Classes\AppUserModelId\DOCXdodyr.Desktop.3.0"; ValueType: string; ValueName: "DisplayName"; ValueData: "{#MyAppName}"; Flags: uninsdeletekey
-Root: HKCU; Subkey: "Software\Classes\AppUserModelId\DOCXdodyr.Desktop.3.0"; ValueType: string; ValueName: "IconUri"; ValueData: "{app}\{#MyAppExeName},0"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\AppUserModelId\DOCXdodyr.Desktop.3.1"; ValueType: string; ValueName: "DisplayName"; ValueData: "{#MyAppName}"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\AppUserModelId\DOCXdodyr.Desktop.3.1"; ValueType: string; ValueName: "IconUri"; ValueData: "{app}\{#MyAppExeName},0"; Flags: uninsdeletekey
 
 ; Ассоциация .docx
 Root: HKCU; Subkey: "Software\Classes\.docx\OpenWithProgids"; ValueType: none; ValueName: "DOCXdodyr.Document.docx"; Tasks: fileassoc_docx; Flags: uninsdeletevalue

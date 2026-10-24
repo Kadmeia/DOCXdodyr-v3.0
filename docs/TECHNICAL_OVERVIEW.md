@@ -1,4 +1,4 @@
-# Техническое описание DOCXдодыр v3.0.2
+# Техническое описание DOCXдодыр v3.1.0
 
 Архитектурный обзор ядра, конвейера обработки документов и мер безопасности.
 
@@ -6,7 +6,7 @@
 
 `main.py` — GUI/CLI entry point. Основные модули, включая `backend_api.py` и `ui_bridge.py`, находятся в `app/`. `web/index.html` и `web/script.js` вызывают `window.pywebview.api`, связанный с `ApiWrapper`. Wrapper открывает системные диалоги, передаёт команды `BackendApi`, управляет окнами и shutdown. `ui_bridge.py` сериализует события Python → JavaScript и предотвращает вызовы в закрывающееся окно.
 
-BackendApi загружает настройки и лениво инициирует Pullenti. Одиночная обработка проходит через `process_single_file`; пакетная — через `folder_pipeline.py` с общим `entity_registry.py`. DOCX использует python-docx и Office XML; XLSX — openpyxl и `xlsx_semantic.py`; PDF — `pdf_convert.py`, PyMuPDF/pypdf; сканы — `ocr_backend.py`. Pullenti/`legal_pullenti.py`/`placeholders.py` находят и заменяют сущности. `hidden_data.py` и `privacy_audit.py` обрабатывают скрытые части и формируют отчёты. `review_queue` и `review_context.py` обслуживают ручные решения; `document_restorer.py` выполняет восстановление. Выходы создаются в рабочем каталоге результата.
+BackendApi загружает настройки и лениво инициирует Pullenti. Одиночная обработка проходит через `process_single_file`; пакетная — через `folder_pipeline.py` с общим `entity_registry.py`. DOCX использует python-docx и Office XML; XLSX — openpyxl и `xlsx_semantic.py`; PPTX — `presentation_anonymizer.py`; TXT/CSV/MD/JSON — модуль потоковой текстовой замены; PDF — `pdf_convert.py`, PyMuPDF/pypdf; сканы — `ocr_backend.py` с нейросетевым движком Indra OCR (ONNX), Apple Vision и Tesseract. Pullenti/`legal_pullenti.py`/`placeholders.py` находят и заменяют сущности с нормализацией гомоглифов. `hidden_data.py` и `privacy_audit.py` обрабатывают скрытые части и формируют отчёты. `review_queue` и `review_context.py` обслуживают ручные решения; `document_restorer.py` выполняет восстановление. Выходы создаются в рабочем каталоге результата.
 
 ## Trust boundaries
 

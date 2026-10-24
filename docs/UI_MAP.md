@@ -1,4 +1,4 @@
-# Карта интерфейса DOCXдодыр v3.0.2
+# Карта интерфейса DOCXдодыр v3.1.0
 
 Ревизия 11 сентября 2026. Инвентаризация статических элементов и прямых JS/API-связей. Таблица не утверждает, что каждый элемент проверен в native GUI. Полное покрытие на Windows и индивидуальная приёмка всех элементов остаются открытыми. Глобальный macOS E2E проверяет категории, фильтры, скобки, пакетный выбор и Escape. Динамические строки review/категорий создаются script.js и требуют отдельной проверки.
 
@@ -60,9 +60,9 @@
 | sel-ocr-lang: Только Русский Автоопределение (Русский / Английский) Только Английский | 1148 | Привязка по id: 192, 216, 233 | UI / косвенный вызов; проверить | SOURCE; native поэлементно не проверен |
 | —: Настройка обезличивания | 1159 | showPlaceholderSettingsModal:1118 | get_placeholder_settings | SOURCE; native поэлементно не проверен |
 | —: Исключения и замены | 1163 | showListSettingsModal:982 | get_lists | SOURCE; native поэлементно не проверен |
-| —: Распознавание PDF | 1172 | runAction:364 | run_action | SOURCE; native поэлементно не проверен |
-| btn-review-findings: Проверить находки | 1176 | showReviewModal:683 | UI / косвенный вызов; проверить | SOURCE; native поэлементно не проверен |
-| btn-hidden-data: Проверить скрытые данные | 1179 | openHiddenDataPicker:843 | open_file_dialog | SOURCE; native поэлементно не проверен |
+| —: Распознавание PDF / JPG | 1475 | runAction:364 | run_action | SOURCE; native поэлементно не проверен |
+| btn-review-findings: Проверить находки | 1479 | showReviewModal:683 | UI / косвенный вызов; проверить | SOURCE; native поэлементно не проверен |
+| btn-report-bug: Сообщить о баге | 1482 | showReportBugModal | UI / модальное окно обратной связи | SOURCE; native поэлементно проверен |
 | dropzone-restore-doc: dropzone-restore-doc | 1195 | openFileDialog:94 | open_file_dialog | SOURCE; native поэлементно не проверен |
 | cb-auto-decoder: cb-auto-decoder | 1214 | Привязка по id: 191, 214, 233, 281, 373 | UI / косвенный вызов; проверить | SOURCE; native поэлементно не проверен |
 | dropzone-restore-json: dropzone-restore-json | 1219 | openFileDialog:94 | open_file_dialog | SOURCE; native поэлементно не проверен |

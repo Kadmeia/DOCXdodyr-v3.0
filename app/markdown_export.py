@@ -144,8 +144,63 @@ def excel_to_markdown(wb: Any) -> str:
     return "\n".join(lines).strip() + "\n"
 
 
+def docx_to_text(doc: Any) -> str:
+    """Преобразует python-docx Document в чистый структурированный текст."""
+    lines: list[str] = []
+    try:
+        from docx.text.paragraph import Paragraph
+        from docx.table import Table
+    except ImportError:
+        Paragraph = None
+        Table = None
+
+    body_elem = getattr(getattr(doc, "element", None), "body", None)
+    if body_elem is None:
+        for p in getattr(doc, "paragraphs", []):
+            txt = p.text.strip()
+            if txt:
+                lines.append(txt)
+        return "\n".join(lines).strip() + "\n"
+
+    for child in body_elem:
+        tag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+        if tag == "p":
+            p = Paragraph(child, doc) if Paragraph is not None else None
+            text = p.text.strip() if p is not None else "".join(child.itertext()).strip()
+            if text:
+                lines.append(text)
+        elif tag == "tbl":
+            table = Table(child, doc) if Table is not None else None
+            if table is not None:
+                for row in table.rows:
+                    row_cells = [c.text.strip() for c in row.cells]
+                    if any(row_cells):
+                        lines.append(" | ".join(row_cells))
+            else:
+                for row in child.findall(".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tr"):
+                    row_cells = ["".join(tc.itertext()).strip() for tc in row.findall(".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tc")]
+                    if any(row_cells):
+                        lines.append(" | ".join(row_cells))
+            lines.append("")
+
+    return "\n".join(lines).strip() + "\n"
+
+
+def excel_to_text(wb: Any) -> str:
+    """Преобразует openpyxl Workbook в чистый текст (табличные строки с табуляцией)."""
+    lines: list[str] = []
+    for ws in getattr(wb, "worksheets", []):
+        lines.append(f"=== Лист: {ws.title} ===")
+        for row in ws.iter_rows(values_only=True):
+            if any(c is not None and str(c).strip() for c in row):
+                row_str = "\t".join(str(c) if c is not None else "" for c in row)
+                lines.append(row_str)
+        lines.append("")
+    return "\n".join(lines).strip() + "\n"
+
+
 def save_as_markdown(source: Any, out_path: str | os.PathLike) -> Path:
-    """Сохраняет документ python-docx, openpyxl Workbook или строку в файл Markdown."""
+    """Сохраняет документ python-docx, openpyxl Workbook, слайды или строку в файл Markdown."""
     target_path = Path(out_path)
     target_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -153,6 +208,9 @@ def save_as_markdown(source: Any, out_path: str | os.PathLike) -> Path:
         content = docx_to_markdown(source)
     elif hasattr(source, "worksheets"):
         content = excel_to_markdown(source)
+    elif isinstance(source, (list, tuple)):
+        from presentation_anonymizer import pptx_to_markdown
+        content = pptx_to_markdown(source)
     elif isinstance(source, str):
         content = text_to_markdown(source)
     else:
@@ -160,3 +218,25 @@ def save_as_markdown(source: Any, out_path: str | os.PathLike) -> Path:
 
     target_path.write_text(content, encoding="utf-8")
     return target_path
+
+
+def save_as_text(source: Any, out_path: str | os.PathLike) -> Path:
+    """Сохраняет документ python-docx, openpyxl Workbook, слайды или строку в текстовый файл (.txt)."""
+    target_path = Path(out_path)
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if hasattr(source, "element") and hasattr(source, "paragraphs"):
+        content = docx_to_text(source)
+    elif hasattr(source, "worksheets"):
+        content = excel_to_text(source)
+    elif isinstance(source, (list, tuple)):
+        from presentation_anonymizer import pptx_to_text
+        content = pptx_to_text(source)
+    elif isinstance(source, str):
+        content = source.strip() + "\n"
+    else:
+        content = str(source).strip() + "\n"
+
+    target_path.write_text(content, encoding="utf-8")
+    return target_path
+

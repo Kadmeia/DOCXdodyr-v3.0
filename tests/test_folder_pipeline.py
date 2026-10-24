@@ -161,7 +161,7 @@ def test_collect_supported_files_excludes_output_subtree(tmp_path):
     output = tmp_path / DEFAULT_OUTPUT_DIR_NAME
     output.mkdir()
     Document().save(output / "already.docx")
-    (tmp_path / "readme.txt").write_text("не документ", encoding="utf-8")
+    (tmp_path / "binary.bin").write_bytes(b"not a supported document")
 
     found = collect_supported_files(tmp_path)
     assert found == sorted([first.resolve(), second.resolve()], key=lambda p: str(p.relative_to(tmp_path)).casefold())

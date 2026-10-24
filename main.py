@@ -102,6 +102,28 @@ def extract_cli_paths(raw_args: list[str]) -> list[str]:
     return cleaned_paths
 
 
+def _choose_folder_native_fallback(initial_dir: str = "") -> str | None:
+    """Универсальный системный диалог выбора папки (Tkinter) при сбоях pywebview."""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        try:
+            root.attributes('-topmost', True)
+        except Exception:
+            pass
+        selected = filedialog.askdirectory(
+            initialdir=initial_dir or str(Path.home()),
+            title="DOCXдодыр — Выберите папку для обработки"
+        )
+        root.destroy()
+        return str(selected) if selected else None
+    except Exception as exc:
+        logger.debug("Системный фоллбэк выбора папки Tkinter недоступен: %s", exc)
+        return None
+
+
 class ApiWrapper:
     def __init__(self, api=None, startup_files=None, auto_start=False, restore_mode=False):
         if api is not None:
@@ -520,17 +542,18 @@ class ApiWrapper:
         file_types = ('Все файлы (*.*)',)
         if dialog_type == 'anonymize_docs':
             file_types = (
-                'Все поддерживаемые (*.docx;*.docm;*.xlsx;*.xlsm;*.pdf;*.jpg;*.jpeg;*.png;*.bmp;*.tiff;*.tif;*.webp)',
-                'Документы Word Excel PDF (*.docx;*.docm;*.xlsx;*.xlsm;*.pdf)',
+                'Все поддерживаемые (*.docx;*.docm;*.xlsx;*.xlsm;*.pptx;*.pptm;*.pdf;*.txt;*.log;*.csv;*.md;*.json;*.jpg;*.jpeg;*.png;*.bmp;*.tiff;*.tif;*.webp)',
+                'Документы Office и PDF (*.docx;*.docm;*.xlsx;*.xlsm;*.pptx;*.pptm;*.pdf)',
+                'Текстовые файлы (*.txt;*.log;*.csv;*.md;*.json)',
                 'Изображения (*.jpg;*.jpeg;*.png;*.bmp;*.tiff;*.tif;*.webp)',
                 'Все файлы (*.*)',
             )
         elif dialog_type == 'restore_doc':
-            file_types = ('Документы (*.docx;*.docm;*.xlsx;*.xlsm)',)
+            file_types = ('Документы (*.docx;*.docm;*.xlsx;*.xlsm;*.pptx;*.pptm;*.txt;*.log;*.csv;*.md;*.json)',)
         elif dialog_type == 'restore_json':
             file_types = ('Дешифратор (*.json)',)
         elif dialog_type == 'hidden_inspect':
-            file_types = ('Документы (*.docx;*.docm;*.xlsx;*.xlsm;*.pptx;*.pdf)',)
+            file_types = ('Документы (*.docx;*.docm;*.xlsx;*.xlsm;*.pptx;*.pptm;*.pdf)',)
         try:
             result = self._window.create_file_dialog(
                 webview.OPEN_DIALOG, allow_multiple=True, file_types=file_types
@@ -555,17 +578,43 @@ class ApiWrapper:
         """
         if not self._window:
             return
-        folder_dialog = getattr(webview, 'FOLDER_DIALOG', webview.OPEN_DIALOG)
+
+        file_dialog_cls = getattr(webview, 'FileDialog', None)
+        folder_dialog = getattr(file_dialog_cls, 'FOLDER', getattr(webview, 'FOLDER_DIALOG', 20))
+        result = None
+
         try:
             result = self._window.create_file_dialog(folder_dialog)
-        except TypeError:
-            # A few older pywebview versions do not expose a distinct folder
-            # dialog.  Passing the open dialog still permits selecting a
-            # directory on those platforms.
-            result = self._window.create_file_dialog(webview.OPEN_DIALOG)
+        except Exception as exc:
+            logger.warning("Ошибка нативного диалога выбора папки (FOLDER_DIALOG): %s. Попытка через OPEN_DIALOG...", exc)
+            try:
+                result = self._window.create_file_dialog(webview.OPEN_DIALOG)
+            except Exception as exc2:
+                logger.warning("Ошибка вызова create_file_dialog OPEN_DIALOG: %s. Пробуем системный Tkinter...", exc2)
+                result = None
+
+        if not result and not isinstance(result, (list, tuple)):
+            try:
+                tk_folder = _choose_folder_native_fallback()
+                if tk_folder:
+                    result = [tk_folder]
+            except Exception as exc3:
+                logger.error("Критический сбой всех способов выбора папки: %s", exc3)
+
         if result:
             selected = result[0] if isinstance(result, (tuple, list)) else result
-            self.folder_selected(dialog_type, str(selected))
+            selected = unicodedata.normalize('NFC', str(selected).strip(' "\''))
+            if selected and os.path.isfile(selected):
+                # Если пользователь выбрал файл внутри папки (например, при fallback через OPEN_DIALOG)
+                selected = os.path.dirname(selected)
+            if selected and os.path.isdir(selected):
+                self.folder_selected(dialog_type, str(selected))
+            elif selected and self._window:
+                ui_bridge.ui_set_folder_status(
+                    self._window,
+                    f'Выбранный объект не является папкой: {os.path.basename(selected)}',
+                    'error'
+                )
 
     def process_folder_dialog(self, folder_path, continue_existing=False):
         """Public JS bridge entry point used by the folder drop zone."""
@@ -707,15 +756,27 @@ class ApiWrapper:
     def folder_selected(self, dialog_type, folder_path):
         if not folder_path:
             return
-        folder_path = str(folder_path)
+        folder_path = unicodedata.normalize('NFC', str(folder_path).strip(' "\''))
+        if os.path.isfile(folder_path):
+            folder_path = os.path.dirname(folder_path)
         if dialog_type not in ('anonymize_folder', 'continue_folder', 'folder'):
             return
+        if not os.path.isdir(folder_path):
+            if self._window:
+                ui_bridge.ui_set_folder_status(
+                    self._window,
+                    f'Папка не найдена или недоступна: {folder_path}',
+                    'error'
+                )
+            return
+
         continue_existing = dialog_type == 'continue_folder'
         output_dir = os.path.join(folder_path, 'Обезличенные документы')
         if self._window:
             status_prefix = 'Продолжение комплекта' if continue_existing else 'Выбрана папка'
             ui_bridge.ui_set_folder_status(self._window, f"{status_prefix}: {folder_path}", 'working')
             ui_bridge.ui_set_folder_output_hint(self._window, output_dir)
+            ui_bridge.ui_set_global_progress(self._window, True, 'Пакетная обработка', f'Подготовка: {folder_path}', 0)
         process_folder = getattr(self._api, 'process_folder', None)
         if callable(process_folder):
             def _process_folder():
@@ -738,19 +799,45 @@ class ApiWrapper:
                             # which accepted only the source directory.
                             result = process_folder(folder_path)
 
+                    if result is None:
+                        if self._window:
+                            ui_bridge.ui_set_folder_status(
+                                self._window,
+                                'Обработка не запущена: операция отклонена или Pullenti не инициализирован',
+                                'error'
+                            )
+                            ui_bridge.ui_set_global_progress(self._window, False)
+                        return
+
                     if isinstance(result, dict):
                         processed = int(result.get('processed_count', 0) or 0)
                         errors = int(result.get('error_count', 0) or 0)
+                        raw_errs = result.get('errors', [])
+                        actual_out = result.get('output_dir', output_dir)
                     else:
                         processed = int(getattr(result, 'processed_count', 0) or 0)
                         errors = int(getattr(result, 'error_count', 0) or 0)
+                        raw_errs = getattr(result, 'errors', [])
+                        actual_out = getattr(result, 'output_dir', output_dir)
+
+                    first_err_desc = ""
+                    if raw_errs and len(raw_errs) > 0:
+                        first_item = raw_errs[0]
+                        if isinstance(first_item, dict):
+                            first_err_desc = str(first_item.get('error', '')).strip()
+                        else:
+                            first_err_desc = str(first_item).strip()
+
                     if self._window:
                         if errors:
-                            message = (
-                                f'Обработка завершена частично: успешно {processed}, ошибок {errors}'
-                                if processed
-                                else f'Обработка не выполнена: ошибок {errors}'
-                            )
+                            if processed:
+                                err_suffix = f" (первая ошибка: {first_err_desc})" if first_err_desc else ""
+                                message = (
+                                    f'Обработка завершена частично: успешно {processed}, ошибок {errors}{err_suffix}'
+                                )
+                            else:
+                                detail = f": {first_err_desc}" if first_err_desc else f": ошибок {errors}"
+                                message = f'Обработка не выполнена{detail}'
                             ui_bridge.ui_set_folder_status(self._window, message, 'error')
                         else:
                             action = 'Комплект продолжен' if continue_existing else 'Обработка папки завершена'
@@ -760,12 +847,15 @@ class ApiWrapper:
                                 'ready',
                             )
                         ui_bridge.ui_set_global_progress(self._window, False)
-                        if processed and os.path.exists(output_dir):
-                            app_paths.open_folder_in_file_manager(output_dir)
+                        target_out = str(actual_out) if actual_out else output_dir
+                        if processed and os.path.exists(target_out):
+                            app_paths.open_folder_in_file_manager(target_out)
                 except Exception as exc:
                     logger.exception("Ошибка пакетной обработки папки %s", folder_path)
                     if self._window:
-                        ui_bridge.ui_set_folder_status(self._window, f"Ошибка: {exc}", 'error')
+                        from log_sanitizer import sanitize_error_message
+                        safe_err = sanitize_error_message(exc)
+                        ui_bridge.ui_set_folder_status(self._window, f"Ошибка: {safe_err}", 'error')
                         ui_bridge.ui_set_global_progress(self._window, False)
 
             threading.Thread(target=_process_folder, daemon=True).start()

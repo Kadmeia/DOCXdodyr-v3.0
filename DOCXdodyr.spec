@@ -32,14 +32,15 @@ datas = [
     (str(REPO_ROOT / 'THIRD_PARTY_NOTICES.md'), '.'),
 ]
 
-if (REPO_ROOT / 'resources' / 'tessdata').exists():
-    datas.append((str(REPO_ROOT / 'resources' / 'tessdata'), 'resources/tessdata'))
+if (REPO_ROOT / 'resources' / 'indra_models').exists():
+    datas.append((str(REPO_ROOT / 'resources' / 'indra_models'), 'resources/indra_models'))
+
 
 SHIPPED_DOCS = [
     'USER_GUIDE.md', 'WORKFLOWS.md', 'UI_MAP.md', 'TROUBLESHOOTING.md',
     'TECHNICAL_OVERVIEW.md', 'DATA_RETENTION_AND_DELETION.md',
     'DOCUMENTATION_ACCEPTANCE.md', 'DEPENDENCY_READINESS.md',
-    'RELEASE_NOTES_v3.0.0.md',
+    'RELEASE_NOTES_v3.0.0.md', 'RELEASE_NOTES_v3.1.md', 'RELEASE_NOTES_v3.1.0.md',
 ]
 datas += [(str(REPO_ROOT / 'docs' / name), 'docs') for name in SHIPPED_DOCS]
 
@@ -66,6 +67,7 @@ hiddenimports = [
     'crash_recovery',
     'decoder_binding',
     'folder_pipeline',
+    'presentation_anonymizer',
     'pdf_convert',
     'ocr_backend',
     'markdown_export',
@@ -100,7 +102,12 @@ hiddenimports = [
     'openpyxl.worksheet',
     'fitz',
     'webview',
+    'indra_ocr',
+    'onnxruntime',
+    'pypdfium2',
+    'cv2',
 ]
+hiddenimports += collect_submodules('indra_ocr')
 
 if sys.platform == "win32":
     hiddenimports += [
@@ -130,6 +137,10 @@ binaries = []
 
 # 3. Исключения (тяжелые или dev-библиотеки, не входящие в базовое ядро)
 excludes = [
+    'PyQt5',
+    'PyQt6',
+    'PySide2',
+    'PySide6',
     'scipy',
     'matplotlib',
     'pytest',

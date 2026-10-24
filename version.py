@@ -6,18 +6,18 @@ from __future__ import annotations
 import sys
 from typing import Any, Dict, Tuple
 
-__version__: str = "3.0.2"
-VERSION_TUPLE: Tuple[int, int, int] = (3, 0, 2)
+__version__: str = "3.1.0"
+VERSION_TUPLE: Tuple[int, int, int] = (3, 1, 0)
 
 APP_NAME: str = "DOCXdodyr"
 APP_DISPLAY_NAME: str = "DOCXдодыр"
-APP_TITLE: str = "DOCXдодыр v3.0.2"
+APP_TITLE: str = "DOCXдодыр v3.1.0"
 APP_WINDOW_TITLE: str = APP_TITLE
 APP_VERSION: str = __version__
 
 # Идентификаторы приложения для платформ
 APP_BUNDLE_ID: str = "ru.docxdodyr.desktop"           # macOS CFBundleIdentifier
-APP_ID_WINDOWS: str = "DOCXdodyr.Desktop.3.0"         # Windows AppUserModelId / Inno Setup AppId
+APP_ID_WINDOWS: str = "DOCXdodyr.Desktop.3.1"         # Windows AppUserModelId / Inno Setup AppId
 
 APP_AUTHOR: str = "DOCXdodyr Contributors"
 APP_COPYRIGHT: str = "© 2024–2026 DOCXдодыр. Все права защищены."

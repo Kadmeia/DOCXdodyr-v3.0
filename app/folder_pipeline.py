@@ -28,7 +28,9 @@ logger = logging.getLogger(__name__)
 # Legacy binary .xls is intentionally excluded: openpyxl cannot read it and
 # silently collecting it would turn a supported-folder run into a partial one.
 IMAGE_SUFFIXES = frozenset({".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp"})
-SUPPORTED_SUFFIXES = frozenset({".docx", ".docm", ".xlsx", ".xlsm", ".pdf"}) | IMAGE_SUFFIXES
+PRESENTATION_SUFFIXES = frozenset({".pptx", ".pptm"})
+TEXT_SUFFIXES = frozenset({".txt", ".log", ".csv", ".md", ".json"})
+SUPPORTED_SUFFIXES = frozenset({".docx", ".docm", ".xlsx", ".xlsm", ".pdf"}) | IMAGE_SUFFIXES | PRESENTATION_SUFFIXES | TEXT_SUFFIXES
 DEFAULT_OUTPUT_DIR_NAME = "Обезличенные документы"
 DEFAULT_DECODER_FILENAME = "Дешифратор.json"
 DEFAULT_MANIFEST_SUFFIX = ".manifest.json"
@@ -227,6 +229,14 @@ def collect_supported_files(
                 if not entry.is_file(follow_symlinks=False):
                     continue
                 if candidate.suffix.casefold() in SUPPORTED_SUFFIXES:
+                    candidate_cf = candidate.name.casefold()
+                    if (
+                        candidate_cf.startswith("дешифратор")
+                        or candidate_cf.startswith("decoder")
+                        or candidate_cf.endswith(DEFAULT_MANIFEST_SUFFIX.casefold())
+                        or candidate_cf.endswith(PROVENANCE_SUFFIX.casefold())
+                    ):
+                        continue
                     found.append(_resolved(candidate))
             except OSError:
                 continue
@@ -447,9 +457,26 @@ class FolderAnonymizationPipeline:
         # A run is built in an explicitly incomplete directory.  It becomes
         # visible under the canonical name only after every file, final batch
         # reconciliation and provenance generation have succeeded.
-        output_root = root / f".docxdodyr-incomplete-{run_id}"
+        is_root_writable = True
+        try:
+            test_probe = root / f".docxdodyr_write_test_{uuid.uuid4().hex[:8]}"
+            test_probe.touch()
+            test_probe.unlink(missing_ok=True)
+            output_root = root / f".docxdodyr-incomplete-{run_id}"
+            output_root.mkdir(parents=True, exist_ok=False)
+        except (OSError, PermissionError):
+            is_root_writable = False
+            fallback_parent = Path.home() / "Downloads" / "DOCXdodyr_Output"
+            fallback_parent.mkdir(parents=True, exist_ok=True)
+            published_output_root = fallback_parent / f"{root.name}_{self.output_dir_name}"
+            output_root = fallback_parent / f".docxdodyr-incomplete-{run_id}"
+            output_root.mkdir(parents=True, exist_ok=False)
+            logger.warning(
+                "Папка %s недоступна для записи (read-only каталог). Перенаправление вывода в: %s",
+                root, published_output_root
+            )
+
         result = FolderProcessResult(source_dir=root, output_dir=published_output_root, files=files)
-        output_root.mkdir(parents=True, exist_ok=False)
         self.backend._active_batch_id = run_id
         batch_entries: list[dict] = []
         source_outputs: list[tuple[Path, list[Path]]] = []
@@ -496,7 +523,7 @@ class FolderAnonymizationPipeline:
                     result.output_files.extend(created)
                     document_outputs = [
                         p for p in created
-                        if p.suffix.casefold() in {".docx", ".docm", ".xlsx", ".xlsm", ".pdf", ".md"}
+                        if p.suffix.casefold() in {".docx", ".docm", ".xlsx", ".xlsm", ".pptx", ".pptm", ".pdf", ".md", ".txt", ".log", ".csv", ".json"}
                         and not p.name.startswith((".", "~$", "~"))
                     ]
                     source_outputs.append((source, document_outputs))
@@ -591,6 +618,15 @@ class FolderAnonymizationPipeline:
                         exact_changes = reconcile_document(target_doc, mapping)
                         result.total_replacements += exact_changes
                         document_changes[target_doc] = document_changes.get(target_doc, 0) + exact_changes
+                    for out_doc in entry["outputs"]:
+                        if (
+                            out_doc
+                            and out_doc.is_file()
+                            and out_doc != target_doc
+                            and out_doc.suffix.casefold() in {".pptx", ".pptm", ".txt", ".log", ".csv", ".json"}
+                        ):
+                            exact_changes = reconcile_document(out_doc, mapping)
+                            result.total_replacements += exact_changes
                 sweep_changes = 0
                 for entry in batch_entries:
                     target_doc = entry.get("target_doc")
@@ -702,6 +738,29 @@ class FolderAnonymizationPipeline:
                             os.replace(temp_md, md)
                         finally:
                             temp_md.unlink(missing_ok=True)
+
+                    txt_outputs = [p for p in outputs if p.suffix.casefold() == ".txt"]
+                    for txt in txt_outputs:
+                        if target_doc and target_doc.is_file():
+                            from markdown_export import save_as_text
+                            temp_txt = txt.with_name(f".{txt.stem}.reconciled.txt")
+                            try:
+                                if target_doc.suffix.casefold() in {".xlsx", ".xlsm"}:
+                                    import openpyxl
+                                    from xlsx_semantic import close_workbook
+                                    wb = openpyxl.load_workbook(str(target_doc))
+                                    try:
+                                        save_as_text(wb, temp_txt)
+                                    finally:
+                                        close_workbook(wb)
+                                else:
+                                    from docx import Document
+                                    doc = Document(str(target_doc))
+                                    save_as_text(doc, temp_txt)
+                                if temp_txt.is_file():
+                                    os.replace(temp_txt, txt)
+                            finally:
+                                temp_txt.unlink(missing_ok=True)
 
                     # Если target_doc был временным файлом сверки, удаляем его
                     if entry.get("is_temp") and target_doc and target_doc.is_file():
@@ -846,7 +905,7 @@ class FolderAnonymizationPipeline:
         archived = None
         try:
             if published_output_root.exists():
-                archive_root = root / ".docxdodyr-previous-runs"
+                archive_root = (root if is_root_writable else published_output_root.parent) / ".docxdodyr-previous-runs"
                 archive_root.mkdir(parents=True, exist_ok=True)
                 archived = archive_root / f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{run_id}"
                 os.replace(published_output_root, archived)

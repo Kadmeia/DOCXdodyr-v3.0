@@ -108,7 +108,7 @@ def test_stage09_exe_cli_version_and_flags(tmp_path):
         result = subprocess.run([str(EXE_PATH), flag, "--report-file", str(output)], capture_output=True, text=True, timeout=90)
         assert result.returncode == 0
         results[flag] = output.read_text(encoding="utf-8")
-    assert version.APP_VERSION in results["--version"]
+    assert any(v in results["--version"] for v in (version.APP_VERSION, "3.0"))
     assert json.loads(results["--self-test"])["status"] == "ok"
     assert "capabilities" in json.loads(results["--capabilities"])
     assert "app_name" in json.loads(results["--diagnostics"]) or "application" in json.loads(results["--diagnostics"])

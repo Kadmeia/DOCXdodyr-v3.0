@@ -880,7 +880,7 @@ def ocr_pdf_to_result(
         ))
         if cancel_check and cancel_check():
             raise PDFOCRCancelled("Распознавание PDF отменено пользователем")
-        if backend_info.name in {"applevision", "tesseract"} and worker_count > 1:
+        if backend_info.name in {"indra", "applevision", "tesseract"} and worker_count > 1:
             from collections import deque
             from concurrent.futures import ThreadPoolExecutor
 

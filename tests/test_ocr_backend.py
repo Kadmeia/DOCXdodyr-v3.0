@@ -157,51 +157,58 @@ def test_paddle_shapes_are_normalized_without_engine():
     assert paddle[0].confidence == 0.73
 
 
-def test_windows_selector_uses_tesseract_before_paddleocr(monkeypatch):
-    fake = _FakeBackend()
-    monkeypatch.setattr(ocr_backend, "_TesseractOCRBackend", lambda language: fake)
-    monkeypatch.setattr(
-        ocr_backend,
-        "_PaddleOCRBackend",
-        lambda language: (_ for _ in ()).throw(AssertionError("fallback must not be constructed")),
-    )
+def test_windows_selector_uses_indra_first(monkeypatch):
+    fake_indra = _FakeBackend()
+    monkeypatch.setattr(ocr_backend, "_IndraOCRBackend", lambda language: fake_indra)
+    info, backend = ocr_backend.create_ocr_backend(platform_name="win32")
+    assert info.name == "indra"
+    assert backend is fake_indra
+
+
+def test_windows_selector_uses_indra_exclusively(monkeypatch):
+    fake_indra = _FakeBackend()
+    monkeypatch.setattr(ocr_backend, "_IndraOCRBackend", lambda language: fake_indra)
 
     info, backend = ocr_backend.create_ocr_backend(platform_name="win32")
-
-    assert info.name == "tesseract"
-    assert backend is fake
+    assert info.name == "indra"
+    assert backend is fake_indra
 
 
 def test_windows_never_selects_apple_vision(monkeypatch):
     fake = _FakeBackend()
     monkeypatch.setattr(
         ocr_backend,
+        "_IndraOCRBackend",
+        lambda language: fake,
+    )
+    monkeypatch.setattr(
+        ocr_backend,
         "_AppleVisionBackend",
         lambda language: (_ for _ in ()).throw(AssertionError("Vision is macOS-only")),
     )
-    monkeypatch.setattr(ocr_backend, "_TesseractOCRBackend", lambda language: fake)
 
     info, _ = ocr_backend.create_ocr_backend(preferred="applevision", platform_name="win32")
+    assert info.name == "indra"
 
-    assert info.name == "tesseract"
 
+def test_macos_prefers_vision_then_indra(monkeypatch):
+    fake_vision = _FakeBackend()
+    fake_indra = _FakeBackend()
+    monkeypatch.setattr(ocr_backend, "_AppleVisionBackend", lambda language: fake_vision)
+    monkeypatch.setattr(ocr_backend, "_IndraOCRBackend", lambda language: fake_indra)
 
-def test_macos_prefers_vision_then_tesseract(monkeypatch):
-    fallback = _FakeBackend()
+    info, backend = ocr_backend.create_ocr_backend(platform_name="darwin")
+    assert info.name == "applevision"
+    assert backend is fake_vision
+
+    # Fallback to Indra if vision is unavailable on macOS
     monkeypatch.setattr(
         ocr_backend, "_AppleVisionBackend",
         lambda language: (_ for _ in ()).throw(ocr_backend.OCRBackendUnavailable("unavailable")),
     )
-    monkeypatch.setattr(ocr_backend, "_TesseractOCRBackend", lambda language: fallback)
-    monkeypatch.setattr(
-        ocr_backend, "_PaddleOCRBackend",
-        lambda language: (_ for _ in ()).throw(AssertionError("PaddleOCR must not be second")),
-    )
-
-    info, backend = ocr_backend.create_ocr_backend(platform_name="darwin")
-
-    assert info.name == "tesseract"
-    assert backend is fallback
+    info_fallback, backend_fallback = ocr_backend.create_ocr_backend(platform_name="darwin")
+    assert info_fallback.name == "indra"
+    assert backend_fallback is fake_indra
 
 
 def test_tesseract_finds_homebrew_binary_outside_path(monkeypatch):
@@ -1069,3 +1076,106 @@ def test_libreoffice_conversion_preserves_existing_temp_neighbor(
     assert pdf_convert.convert_docx_to_pdf_libreoffice(source, output) is True
     assert output.read_bytes() == b"synthetic pdf"
     assert existing_temp.read_bytes() == b"keep this content"
+
+
+def test_indra_ocr_backend_direct_and_regex_normalization(monkeypatch):
+    """Проверяет интеграцию _IndraOCRBackend, нормализацию координат и гомоглифов."""
+    from PIL import Image
+    import io
+
+    img = Image.new("L", (1000, 500), 255)
+    bio = io.BytesIO()
+    img.save(bio, "PNG")
+    raw_png = bio.getvalue()
+
+    class FakeIndraLine:
+        def __init__(self, text, box, conf):
+            self.text = text
+            self.box = box
+            self.conf = conf
+
+    class FakeIndraPage:
+        def __init__(self):
+            self.lines = [
+                FakeIndraLine("Cумма платежа: 1 000 000 pуб.", [50, 100, 450, 140], 0.95),
+                FakeIndraLine("е-mail: ivaп.petrov_соrp@domain-service.гu", [50, 150, 600, 190], 0.92),
+                FakeIndraLine("OOO «Инвест-Сервис»", [50, 200, 350, 240], 0.98),
+            ]
+
+    class FakeConverter:
+        def ocr(self, _gray):
+            return FakeIndraPage()
+
+    class FakeIndraMod:
+        @staticmethod
+        def load(*args, **kwargs):
+            return FakeConverter()
+
+    monkeypatch.setitem(sys.modules, "indra_ocr", FakeIndraMod)
+
+    backend = ocr_backend._IndraOCRBackend()
+    regions = backend.recognize_regions(raw_png)
+
+    assert len(regions) == 3
+    # Проверка нормализации координат (x1, y1, x2, y2 в диапазоне 0..1)
+    r1, r2, r3 = regions
+    assert r1.bbox == (0.05, 0.2, 0.45, 0.28)
+    assert r1.confidence == 0.95
+    # Проверка устранения гомоглифов в русских словах (Cумма -> Сумма, pуб. -> руб.)
+    assert "Сумма" in r1.text
+    assert "руб." in r1.text
+    assert ord(r1.text[0]) == 0x0421  # Русская С, а не латинская C
+
+    # Проверка устранения гомоглифов в email (ivaп -> ivan, соrp -> corp, гu -> ru)
+    assert "ivan.petrov_corp@domain-service.ru" in r2.text
+
+    # Проверка нормализации ООО
+    assert r3.text.startswith("ООО «")
+    assert ord(r3.text[0]) == 0x041E  # Русская О
+
+
+def test_indra_ocr_selector_and_fallback(monkeypatch):
+    """Проверяет явный выбор Indra и корректный fallback при отсутствии."""
+    class FakeIndra:
+        label = "Indra Mock"
+        def recognize_regions(self, _bytes):
+            return [ocr_backend.OCRTextRegion("Indra OK")]
+
+    monkeypatch.setattr(ocr_backend, "_IndraOCRBackend", lambda language: FakeIndra())
+
+    info, backend = ocr_backend.create_ocr_backend(preferred="indra")
+    assert info.name == "indra"
+    assert info.label == "Indra Mock"
+
+    # При ошибке инициализации Indra на Windows выбрасывается OCRBackendUnavailable (Tesseract удален)
+    def failing_indra(language):
+        raise ocr_backend.OCRBackendUnavailable("Models missing")
+
+    monkeypatch.setattr(ocr_backend, "_IndraOCRBackend", failing_indra)
+
+    with pytest.raises(ocr_backend.OCRBackendUnavailable):
+        ocr_backend.create_ocr_backend(preferred="indra", platform_name="win32")
+
+
+def test_indra_ocr_finds_local_offline_models(tmp_path: Path, monkeypatch):
+    """Проверяет обнаружение локально вшитых моделей для работы без интернета."""
+    models_dir = tmp_path / "resources" / "indra_models"
+    models_dir.mkdir(parents=True)
+    (models_dir / "det.onnx").write_bytes(b"dummy det")
+    (models_dir / "rec.onnx").write_bytes(b"dummy rec")
+
+    monkeypatch.setenv("INDRA_OCR_MODEL_DIR", str(models_dir))
+    found = ocr_backend._find_indra_model_dir()
+    assert found == str(models_dir)
+
+    # Проверка вызова indra_ocr.load с локальным путем
+    loaded_paths = []
+    class FakeIndraMod:
+        @staticmethod
+        def load(path=None, threads=1):
+            loaded_paths.append(path)
+            return None
+
+    monkeypatch.setitem(sys.modules, "indra_ocr", FakeIndraMod)
+    ocr_backend._IndraOCRBackend()
+    assert loaded_paths == [str(models_dir)]

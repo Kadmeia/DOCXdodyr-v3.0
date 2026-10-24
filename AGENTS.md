@@ -1,10 +1,10 @@
-# Инструкция для Antigravity IDE — DOCXdodyr v3.0
+# Инструкция для Antigravity IDE — DOCXdodyr v3.1
 
 ## О проекте
 
 **DOCXdodyr (DOCXдодыр)** — локальный инструмент для замены персональных данных и реквизитов в документах (DOCX, XLSX, PDF, сканы) перед передачей. Написан на Python 3.11. Имеет GUI (pywebview), CLI, поддержку OCR (Apple Vision / Tesseract), опциональный Qwen-LLM постпроцессор.
 
-**Текущая версия:** v3.0.2
+**Текущая версия:** v3.1.0
 **Python:** строго 3.11.x (проверяется в CI)
 **Платформы:** Windows 10/11 x64, macOS 14+ (arm64 и x86_64)
 

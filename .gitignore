@@ -53,6 +53,7 @@ review_queue.json
 
 # --- Neural Models & Weights (> 100MB / Model Manager) ---
 models/
+resources/indra_models/
 *.safetensors
 *.bin
 *.onnx

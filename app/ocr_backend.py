@@ -101,6 +101,40 @@ _OCR_LEGAL_CORRECTIONS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"\b(?:JeJIo|IeJIo)\b"), "Дело"),
 )
 
+# Таблицы гомоглифов для разрешения межъязыковой путаницы символов (script confusion)
+_CYR_TO_LAT_HOMOGLYPHS = str.maketrans({
+    "а": "a", "А": "A",
+    "в": "b", "В": "B",
+    "е": "e", "Е": "E",
+    "к": "k", "К": "K",
+    "м": "m", "М": "M",
+    "н": "h", "Н": "H",
+    "о": "o", "О": "O",
+    "р": "p", "Р": "P",
+    "с": "c", "С": "C",
+    "т": "t", "Т": "T",
+    "у": "y", "У": "Y",
+    "х": "x", "Х": "X",
+    "п": "n", "П": "N",
+    "г": "r", "Г": "R",
+    "ц": "u", "Ц": "U",
+})
+
+_LAT_TO_CYR_HOMOGLYPHS = str.maketrans({
+    "a": "а", "A": "А",
+    "B": "В",
+    "e": "е", "E": "Е",
+    "k": "к", "K": "К",
+    "M": "М",
+    "H": "Н",
+    "o": "о", "O": "О",
+    "p": "р", "P": "Р",
+    "c": "с", "C": "С",
+    "T": "Т",
+    "y": "у", "Y": "У",
+    "x": "х", "X": "Х",
+})
+
 
 def normalize_ocr_line(text: str) -> str:
     """Clean common OCR artifacts in a single recognized line."""
@@ -108,6 +142,41 @@ def normalize_ocr_line(text: str) -> str:
         return ""
 
     s = str(text)
+    # 0. Исправление межъязыковых артефактов в email и веб-адресах
+    def _fix_email_homoglyphs(m: re.Match) -> str:
+        return m.group(0).translate(_CYR_TO_LAT_HOMOGLYPHS)
+
+    s = re.sub(
+        r"\b[A-Za-zА-Яа-я0-9._%+-]+@[A-Za-zА-Яа-я0-9.-]+\.[A-Za-zА-Яа-я]{2,}\b",
+        _fix_email_homoglyphs,
+        s,
+    )
+
+    def _fix_url_homoglyphs(m: re.Match) -> str:
+        return m.group(0).translate(_CYR_TO_LAT_HOMOGLYPHS)
+
+    s = re.sub(r"\bhttps?://[A-Za-zА-Яа-я0-9.-]+(?:/[^\s]*)?", _fix_url_homoglyphs, s)
+
+    # 0.1. SWIFT и BIC коды (строго латиница)
+    def _fix_swift(m: re.Match) -> str:
+        return m.group(1) + m.group(2) + m.group(3).translate(_CYR_TO_LAT_HOMOGLYPHS)
+
+    s = re.sub(r"(?i)\b(SWIFT|BIC|БИК|СВИФТ)([:\s]+)([A-Za-zА-Яа-я0-9]{8,11})\b", _fix_swift, s)
+
+    # 0.2. VIN коды (17 символов, строго латиница)
+    def _fix_vin(m: re.Match) -> str:
+        return m.group(1) + m.group(2) + m.group(3).translate(_CYR_TO_LAT_HOMOGLYPHS)
+
+    s = re.sub(r"(?i)\b(VIN|ВИН|кузов[а-я]*|шасси)([:\s№#]+)([A-Za-zА-Яа-я0-9]{17})\b", _fix_vin, s)
+
+    # 0.3. Паспортный код подразделения (исправление буквы O/О на ноль, формат NNN-NNN)
+    def _fix_division_code(m: re.Match) -> str:
+        part1 = m.group(1).replace("O", "0").replace("О", "0")
+        part2 = m.group(2).replace("O", "0").replace("О", "0")
+        return f"{part1}-{part2}"
+
+    s = re.sub(r"\b([0-9OО]{3})[-—]([0-9OО]{3})\b", _fix_division_code, s)
+
     # 1. Standard punctuation and quotes
     # Single angle brackets are meaningful in contracts, code and formulas.
     # Only dedicated Unicode quote variants are safe to normalize.
@@ -122,6 +191,19 @@ def normalize_ocr_line(text: str) -> str:
     # 2. Russian legal boilerplate and entities OCR fixes
     for pattern, replacement in _OCR_LEGAL_CORRECTIONS:
         s = pattern.sub(replacement, s)
+
+    # 2.3. Коррекция слов с преобладающим русским или латинским алфавитом (устранение смешивания символов)
+    def _fix_word_scripts(m: re.Match) -> str:
+        w = m.group(0)
+        cyr = sum(1 for ch in w if "\u0400" <= ch <= "\u04FF")
+        lat = sum(1 for ch in w if ("A" <= ch <= "Z" or "a" <= ch <= "z"))
+        if cyr >= 2 and 1 <= lat <= 2:
+            return w.translate(_LAT_TO_CYR_HOMOGLYPHS)
+        if lat >= 2 and 1 <= cyr <= 2:
+            return w.translate(_CYR_TO_LAT_HOMOGLYPHS)
+        return w
+
+    s = re.sub(r"\b[A-Za-zА-Яа-яЁё0-9_-]+\b", _fix_word_scripts, s)
 
     # 3. Cyrillic digram & character substitutions
     s = re.sub(r"(?<=[А-Яа-яA-Za-z])bI(?=[А-Яа-яA-Za-z]|\b)", "ы", s)
@@ -358,6 +440,8 @@ def available_backend_names(platform_name: str | None = None) -> tuple[str, ...]
 
     platform_name = platform_name or sys.platform
     result: list[str] = []
+    if _module_available("indra_ocr"):
+        result.append("indra")
     if platform_name == "darwin" and _module_available("Vision") and _module_available("Quartz"):
         result.append("applevision")
     if _module_available("paddleocr"):
@@ -514,6 +598,83 @@ class _PaddleOCRBackend:
             return _paddle_regions(result, width, height)
         except Exception as exc:
             raise OCRBackendError(f"PaddleOCR не смог распознать страницу: {exc}") from exc
+
+    def recognize(self, image_bytes: bytes) -> list[str]:
+        return [region.text for region in self.recognize_regions(image_bytes)]
+
+
+def _find_indra_model_dir() -> str | None:
+    """Find local directory containing offline Indra ONNX models."""
+    env_dir = os.environ.get("INDRA_OCR_MODEL_DIR")
+    if env_dir:
+        p = Path(env_dir)
+        if (p / "det.onnx").is_file() and (p / "rec.onnx").is_file():
+            return str(p)
+
+    candidates = [
+        Path(getattr(sys, "_MEIPASS", "")) / "resources" / "indra_models" if getattr(sys, "_MEIPASS", None) else None,
+        Path(sys.executable).parent / "resources" / "indra_models",
+        Path(sys.executable).parent / "_internal" / "resources" / "indra_models",
+        app_paths.get_bundle_dir() / "resources" / "indra_models",
+        app_paths.get_bundle_dir() / "indra_models",
+        app_paths.get_user_models_dir() / "indra",
+        Path.home() / ".docxdodyr" / "models" / "indra",
+    ]
+    for candidate in candidates:
+        if candidate and (candidate / "det.onnx").is_file() and (candidate / "rec.onnx").is_file():
+            return str(candidate)
+    return None
+
+
+class _IndraOCRBackend:
+    name = "indra"
+    label = "Indra OCR (ONNX Neural 1M)"
+
+    def __init__(self, language: str = "rus+eng") -> None:
+        try:
+            import indra_ocr
+
+            self._indra = indra_ocr
+            threads = min(4, os.cpu_count() or 1)
+            model_dir = _find_indra_model_dir()
+            if model_dir:
+                self._converter = indra_ocr.load(path=model_dir, threads=threads)
+            else:
+                self._converter = indra_ocr.load(threads=threads)
+        except Exception as exc:
+            raise OCRBackendUnavailable(
+                f"Indra OCR недоступен: {exc}"
+            ) from exc
+
+    def recognize_regions(self, image_bytes: bytes) -> list[OCRTextRegion]:
+        try:
+            from PIL import Image
+            import numpy as np
+
+            image_obj = Image.open(BytesIO(image_bytes))
+            width, height = image_obj.size
+            gray = np.array(image_obj.convert("L"))
+            page = self._converter.ocr(gray)
+
+            results: list[OCRTextRegion] = []
+            for line in page.lines:
+                text = normalize_ocr_line(line.text)
+                if not text:
+                    continue
+                reg = _region(
+                    text,
+                    line.box,
+                    line.conf,
+                    width,
+                    height,
+                    origin="top-left",
+                    normalized=False,
+                )
+                if reg:
+                    results.append(reg)
+            return results
+        except Exception as exc:
+            raise OCRBackendError(f"Indra OCR не смог распознать страницу: {exc}") from exc
 
     def recognize(self, image_bytes: bytes) -> list[str]:
         return [region.text for region in self.recognize_regions(image_bytes)]
@@ -704,13 +865,14 @@ def create_ocr_backend(
     excluded = set(excluded or ())
     factories: dict[str, Callable[[], Any]] = {
         "applevision": lambda: _AppleVisionBackend(language),
+        "indra": lambda: _IndraOCRBackend(language),
         "paddleocr": lambda: _PaddleOCRBackend(language),
         "tesseract": lambda: _TesseractOCRBackend(language),
     }
     if platform_name == "darwin":
-        defaults = ["applevision", "tesseract", "paddleocr"]
+        defaults = ["applevision", "indra"]
     else:
-        defaults = ["tesseract", "paddleocr"]
+        defaults = ["indra"]
     candidates = []
     # Apple Vision is a macOS system framework; never honor that preference
     # on Windows/Linux even if a similarly named Python package is installed.

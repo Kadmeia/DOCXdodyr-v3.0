@@ -544,6 +544,7 @@ class BackendApi:
         self.save_docx = bool(self.settings.get("save_docx", False))
         self.save_pdf = bool(self.settings.get("save_pdf", False))
         self.save_markdown = bool(self.settings.get("save_markdown", False))
+        self.save_text = bool(self.settings.get("save_text", False))
         self.save_decoder = bool(self.settings.get("save_decoder", False))
         self.auto_decoder = bool(self.settings.get("auto_decoder", True))
         self.save_log_files = bool(self.settings.get("save_log_files", False))
@@ -653,6 +654,9 @@ class BackendApi:
         if 'save_markdown' in settings:
             self.save_markdown = bool(settings['save_markdown'])
             self.settings['save_markdown'] = self.save_markdown
+        if 'save_text' in settings:
+            self.save_text = bool(settings['save_text'])
+            self.settings['save_text'] = self.save_text
         if 'irreversible_pdf' in settings:
             self.irreversible_pdf = bool(settings['irreversible_pdf'])
             self.settings['irreversible_pdf'] = self.irreversible_pdf
@@ -1069,13 +1073,27 @@ class BackendApi:
         # personal data as body text.  Anonymise it by default; never copy it
         # unchanged into a supposedly anonymised result.
         return {
-            "comments": "remove", "footnotes": "anonymize", "endnotes": "anonymize",
-            "hidden_text": "anonymize", "tracked_changes": "remove",
-            "embedded_objects": "remove", "embedded_files": "remove",
-            "annotations": "remove", "acroform": "remove", "javascript": "remove",
-            "macros": "remove", "custom_xml": "remove", "external_links": "remove",
-            "document_properties": "remove", "image_exif_xmp": "remove",
-            "pdf_info": "remove", "pdf_xmp": "remove", "digital_signature": "keep",
+            # 1. Маскируются по плейсхолдерам при обычном обезличивании:
+            "comments": "anonymize",
+            "footnotes": "anonymize",
+            "endnotes": "anonymize",
+            "acroform": "anonymize",
+            "annotations": "anonymize",
+            # 2. Всегда удаляются при обычном обезличивании:
+            "hidden_text": "remove",
+            "tracked_changes": "remove",
+            "embedded_objects": "remove",
+            "embedded_files": "remove",
+            "javascript": "remove",
+            "macros": "remove",
+            "custom_xml": "remove",
+            "external_links": "remove",
+            "document_properties": "remove",
+            "image_exif_xmp": "remove",
+            "pdf_info": "remove",
+            "pdf_xmp": "remove",
+            # Системные:
+            "digital_signature": "keep",
             "encrypted_pdf": "keep",
         }
 
@@ -1245,6 +1263,7 @@ class BackendApi:
             "save_docx": bool(getattr(self, "save_docx", False)),
             "save_pdf": bool(getattr(self, "save_pdf", False)),
             "save_markdown": bool(getattr(self, "save_markdown", False)),
+            "save_text": bool(getattr(self, "save_text", False)),
             "irreversible_pdf": bool(getattr(self, "irreversible_pdf", False)),
             "save_decoder": bool(getattr(self, "save_decoder", False)),
             "auto_decoder": bool(getattr(self, "auto_decoder", True)),
@@ -2074,6 +2093,8 @@ class BackendApi:
         is_excel = suffix in (".xlsx", ".xlsm")
         is_pdf = suffix == ".pdf"
         is_image = suffix in (".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp")
+        is_presentation = suffix in (".pptx", ".pptm")
+        is_text = suffix in (".txt", ".log", ".csv", ".md", ".json")
 
         total_replacements_in_file = 0
         log_data = []
@@ -2409,6 +2430,68 @@ class BackendApi:
             doc = Document()
             for paragraph_text in reconstruct_structured_paragraphs(cleaned_text):
                 doc.add_paragraph(paragraph_text)
+        elif is_presentation:
+            from presentation_anonymizer import anonymize_pptx, extract_pptx_slides
+            self._active_review_location = "Presentation"
+            self._active_review_coordinate = {"scope": "presentation", "kind": "slide", "index": 0}
+
+            def _anon_pptx_wrapper(text_val: str):
+                return self.anonymize_text_pullenti(
+                    text_val, exclusions_list, custom_replacements_list,
+                    prev_paragraphs=None, mapping_dict=mapping_dict,
+                    entity_seen=entity_seen,
+                )
+
+            fd_pptx, temp_pptx_str = tempfile.mkstemp(prefix="docxdodyr-pptx-", suffix=suffix)
+            os.close(fd_pptx)
+            temp_pptx_path = Path(temp_pptx_str)
+            resources.callback(lambda p=temp_pptx_path: p.unlink(missing_ok=True))
+            pptx_repls, pptx_logs, cleaned_text = anonymize_pptx(
+                file_p, temp_pptx_path, _anon_pptx_wrapper,
+                progress_callback=progress_callback,
+            )
+            total_replacements_in_file += pptx_repls
+            log_data.extend(pptx_logs)
+            presentation_slides = extract_pptx_slides(temp_pptx_path)
+
+            doc = Document()
+            for s_info in presentation_slides:
+                doc.add_heading(f"Слайд {s_info['slide_number']}: {s_info['title']}", level=2)
+                for p_text in s_info.get("paragraphs", []):
+                    doc.add_paragraph(p_text)
+                for n_text in s_info.get("notes", []):
+                    doc.add_paragraph(f"Заметка: {n_text}")
+        elif is_text:
+            self._active_review_location = "TextDocument"
+            self._active_review_coordinate = {"scope": "text", "kind": "line", "index": 0}
+
+            raw_bytes = file_p.read_bytes()
+            try:
+                raw_text = raw_bytes.decode("utf-8")
+            except UnicodeDecodeError:
+                raw_text = raw_bytes.decode("cp1251", errors="replace")
+
+            cleaned_parts = []
+            pieces = re.split(r"(\n\s*\n+)", raw_text)
+            for piece in pieces:
+                if not piece.strip() or re.fullmatch(r"\n\s*\n+", piece):
+                    cleaned_parts.append(piece)
+                    continue
+                for offset in range(0, len(piece), 8000):
+                    fragment = piece[offset:offset + 8000]
+                    cleaned_frag, frag_count, frag_logs = self.anonymize_text_pullenti(
+                        fragment, exclusions_list, custom_replacements_list,
+                        prev_paragraphs=None, mapping_dict=mapping_dict,
+                        entity_seen=entity_seen,
+                    )
+                    cleaned_parts.append(cleaned_frag)
+                    total_replacements_in_file += frag_count
+                    log_data.extend(frag_logs)
+            cleaned_text = "".join(cleaned_parts)
+
+            doc = Document()
+            for paragraph_text in reconstruct_structured_paragraphs(cleaned_text):
+                doc.add_paragraph(paragraph_text)
         else:
             raise ValueError(f"Неподдерживаемый тип файла: {file_p.suffix}")
 
@@ -2420,10 +2503,19 @@ class BackendApi:
         # single-file API and prevents accidental writes next to user files.
         if output_dir is not None:
             output_root = Path(output_dir)
-            output_root.mkdir(parents=True, exist_ok=True)
-            test_probe = output_root / f".docxdodyr_write_test_{uuid.uuid4().hex[:8]}"
-            test_probe.touch()
-            test_probe.unlink(missing_ok=True)
+            try:
+                output_root.mkdir(parents=True, exist_ok=True)
+                test_probe = output_root / f".docxdodyr_write_test_{uuid.uuid4().hex[:8]}"
+                test_probe.touch()
+                test_probe.unlink(missing_ok=True)
+            except (OSError, PermissionError):
+                fallback_dir = Path.home() / "Downloads" / "DOCXdodyr_Output"
+                fallback_dir.mkdir(parents=True, exist_ok=True)
+                logger.warning(
+                    "Папка вывода %s недоступна для записи. Перенаправляем результат в: %s",
+                    output_root, fallback_dir
+                )
+                output_root = fallback_dir
         else:
             output_root = file_p.parent
             try:
@@ -2456,28 +2548,33 @@ class BackendApi:
             opt_word = bool(getattr(self, 'save_docx', False))
             opt_pdf = bool(getattr(self, 'save_pdf', False))
             opt_markdown = bool(getattr(self, 'save_markdown', False))
+            opt_text = bool(getattr(self, 'save_text', False))
 
-            if not opt_word and not opt_pdf and not opt_markdown:
+            if not opt_word and not opt_pdf and not opt_markdown and not opt_text:
                 # По умолчанию (когда ни один тумблер форматов не включен):
                 # сохраняем в том же формате, что и был загружен:
-                # DOCX→DOCX, DOCM→DOCM, XLSX→XLSX, XLSM→XLSM, PDF→PDF, изображения→PDF.
+                # DOCX→DOCX, DOCM→DOCM, XLSX→XLSX, XLSM→XLSM, PPTX→PPTX, PPTM→PPTM, PDF→PDF, TXT→TXT, MD→MD, изображения→PDF.
                 # Ровно один результат на входной файл!
                 save_word = is_word
                 save_excel = is_excel
+                save_presentation = is_presentation
                 save_pdf = is_pdf or is_image
-                save_markdown = False
+                save_markdown = (suffix == ".md")
+                save_text = is_text and (suffix != ".md")
             else:
                 # Включены явные тумблеры форматов:
-                # Сохраняем только выбранные форматы, не добавляя исходный формат автоматически.
-                # Word для Excel дает DOCX, а не XLSX!
+                # Сохраняем ТОЛЬКО выбранные форматы, не добавляя исходный формат автоматически.
+                # Например, если выбран только Markdown или только Text, DOCX и PDF пересохраняются в них!
                 save_word = opt_word
                 save_excel = False
+                save_presentation = False
                 save_pdf = opt_pdf
                 save_markdown = opt_markdown
+                save_text = opt_text
 
             # 1. Сохранение в формате Word (.docx / .docm)
             if save_word:
-                word_ext = ".docx" if (is_pdf or is_image or is_excel) else (".docm" if suffix == ".docm" else ".docx")
+                word_ext = ".docx" if (is_pdf or is_image or is_excel or is_presentation or is_text) else (".docm" if suffix == ".docm" else ".docx")
                 word_path = get_unique_filename(output_base, "_cleaned", word_ext)
                 current_target_file = word_path
                 _private_status(f"DEBUG: Начинаем сохранение документа Word в: {word_path}")
@@ -2510,6 +2607,20 @@ class BackendApi:
                     generated_outputs.append(excel_path)
                 current_target_file = None
 
+            # 2.1 Сохранение в формате PowerPoint (.pptx / .pptm)
+            if save_presentation and is_presentation:
+                pptx_ext = suffix
+                pptx_path = get_unique_filename(output_base, "_cleaned", pptx_ext)
+                current_target_file = pptx_path
+                _private_status(f"DEBUG: Начинаем сохранение презентации в: {pptx_path}")
+                _private_status(f"DEBUG: Общее количество замен в презентации: {total_replacements_in_file}")
+                shutil.copy2(temp_pptx_path, pptx_path)
+                _private_status(f"DEBUG: Файл презентации успешно сохранён ({pptx_path.suffix.upper()}): {pptx_path}")
+                _private_status(f"Сохранен обезличенный файл: {pptx_path}")
+                if pptx_path.exists():
+                    generated_outputs.append(pptx_path)
+                current_target_file = None
+
             # 3. Сохранение в формате Markdown (.md)
             if save_markdown:
                 from markdown_export import save_as_markdown
@@ -2518,12 +2629,37 @@ class BackendApi:
                 _private_status(f"DEBUG: Начинаем сохранение в Markdown: {md_path}")
                 if is_excel:
                     save_as_markdown(wb, md_path)
+                elif is_presentation:
+                    save_as_markdown(presentation_slides, md_path)
+                elif is_text:
+                    save_as_markdown(cleaned_text, md_path)
                 else:
                     save_as_markdown(doc, md_path)
                 if md_path.exists():
                     _private_status(f"Сохранен Markdown файл: {md_path}")
                     _private_status(f"DEBUG: Markdown создан, размер: {md_path.stat().st_size} байт")
                     generated_outputs.append(md_path)
+                current_target_file = None
+
+            # 3.1 Сохранение в формате обычного текста (.txt)
+            if save_text:
+                from markdown_export import save_as_text
+                target_text_ext = suffix if (is_text and not opt_text) else ".txt"
+                txt_path = get_unique_filename(output_base, "_cleaned", target_text_ext)
+                current_target_file = txt_path
+                _private_status(f"DEBUG: Начинаем сохранение в текстовый файл: {txt_path}")
+                if is_excel:
+                    save_as_text(wb, txt_path)
+                elif is_presentation:
+                    save_as_text(presentation_slides, txt_path)
+                elif is_text:
+                    save_as_text(cleaned_text, txt_path)
+                else:
+                    save_as_text(doc, txt_path)
+                if txt_path.exists():
+                    _private_status(f"Сохранен текстовый файл: {txt_path}")
+                    _private_status(f"DEBUG: Текстовый файл создан, размер: {txt_path.stat().st_size} байт")
+                    generated_outputs.append(txt_path)
                 current_target_file = None
 
             # 4. Сохранение в формате PDF (.pdf)
@@ -2545,13 +2681,13 @@ class BackendApi:
 
                 # pdf_converter_ready проверяет, есть ли хотя бы один рабочий путь к PDF:
                 # - LibreOffice/Word (полноценная конвертация с форматированием)
-                # - PyMuPDF fallback (только для PDF/Image/DOCX источников)
+                # - PyMuPDF fallback (для PDF/Image/DOCX/PPTX/Text источников)
                 # Для XLSX без LibreOffice fallback работает, но качество PDF низкое
                 # (нет пересчёта формул, упрощённый layout), поэтому предупреждаем.
                 has_full_converter = PDF_CONVERSION_AVAILABLE or (
                     callable(convert_to_pdf) and convert_to_pdf is not getattr(pdf_convert, 'convert_to_pdf', None)
                 )
-                has_pymupdf_fallback = is_pdf or is_image or is_word
+                has_pymupdf_fallback = is_pdf or is_image or is_word or is_presentation or is_text
                 pdf_converter_ready = has_full_converter or has_pymupdf_fallback or is_excel
 
                 # Для XLSX без LibreOffice/Word показываем предупреждение о fallback
@@ -2583,7 +2719,7 @@ class BackendApi:
                     _private_status(f"DEBUG: Начинаем конвертацию в PDF: {pdf_path}")
                     converted = (
                         convert_docx_text_to_pdf(source_for_pdf, pdf_path)
-                        if (is_pdf or is_image) else convert_to_pdf(source_for_pdf, pdf_path)
+                        if (is_pdf or is_image or is_presentation or is_text) else convert_to_pdf(source_for_pdf, pdf_path)
                     )
                     if converted and pdf_path.exists():
                         _private_status(f"Сохранен PDF файл: {pdf_path}")
@@ -3714,15 +3850,24 @@ class BackendApi:
                     self.replace_text_in_paragraph_xml(paragraph, before, after, log_data, "[Qwen] ")
 
     def run_pdf_ocr_only(self):
-        """PDF → OCR (TSV временно) → DOCX (без обезличивания)."""
+        """PDF / Изображения → OCR → TXT (без обезличивания)."""
         if not getattr(self, '_window', None):
             return
 
-        if not self.start_operation("ocr_pdf", description="Распознавание PDF"):
+        if not self.start_operation("ocr_pdf", description="Распознавание PDF / JPG"):
             return
 
-        # Запрашиваем у пользователя PDF файлы через pywebview
-        selected_files = self._window.create_file_dialog(1, allow_multiple=True, file_types=('PDF files (*.pdf)',))
+        # Запрашиваем у пользователя PDF или файлы изображений через pywebview
+        selected_files = self._window.create_file_dialog(
+            1,
+            allow_multiple=True,
+            file_types=(
+                'PDF и изображения (*.pdf;*.jpg;*.jpeg;*.png;*.tiff;*.tif;*.bmp;*.webp)',
+                'Документы PDF (*.pdf)',
+                'Изображения (*.jpg;*.jpeg;*.png;*.tiff;*.tif;*.bmp;*.webp)',
+                'Все файлы (*.*)',
+            )
+        )
 
         if not selected_files:
             self.finish_operation("idle")
@@ -3745,8 +3890,8 @@ class BackendApi:
             if not pdf_ocr_dependencies_available():
                 names = ", ".join(available_backend_names()) or "нет"
                 raise RuntimeError(
-                    "Для OCR нужен PyMuPDF и OCR backend (Apple Vision на macOS "
-                    f"или Tesseract/PaddleOCR). Найдено: {names}."
+                    "Для OCR нужен PyMuPDF и OCR backend (Indra OCR, Apple Vision на macOS "
+                    f"или PaddleOCR). Найдено: {names}."
                 )
             return True
         except Exception as exc:
@@ -3754,7 +3899,7 @@ class BackendApi:
             return False
 
     def _run_pdf_ocr_worker(self, files):
-        """Фоновый поток для распознавания PDF с защитой от коллизий и атомарным сохранением."""
+        """Фоновый поток для распознавания PDF и изображений (JPG, PNG, TIFF, BMP, WEBP)."""
         tmp_files_to_cleanup = []
         try:
             if not self._ensure_ocr_backend():
@@ -3769,23 +3914,34 @@ class BackendApi:
 
             for i, file_path in enumerate(files):
                 if self.is_cancelled():
-                    logger.info("Распознавание PDF отменено пользователем.")
+                    logger.info("Распознавание отменено пользователем.")
                     break
                 filename = os.path.basename(file_path)
                 if self._window:
                     percent = int((i / len(files)) * 100)
-                    ui_bridge.ui_set_global_progress(self._window, True, 'Распознавание PDF', f'Распознавание {i+1}/{len(files)}: {filename}', percent)
+                    ui_bridge.ui_set_global_progress(self._window, True, 'Распознавание PDF / JPG', f'Распознавание {i+1}/{len(files)}: {filename}', percent)
                 
                 target_output_path = self._get_unique_ocr_output_path(file_path)
                 tmp_output_path = target_output_path.with_name(f".tmp_{target_output_path.stem}_{uuid.uuid4().hex[:8]}.txt")
                 tmp_files_to_cleanup.append(tmp_output_path)
                 try:
-                    text = ocr_pdf_to_text(
-                        file_path,
-                        ocr_lang=ocr_lang,
-                        preferred_backend=preferred_backend,
-                        cancel_check=self.is_cancelled,
-                    )
+                    ext = Path(file_path).suffix.lower()
+                    if ext in {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp"}:
+                        from ocr_backend import ocr_image_to_result
+                        doc_res = ocr_image_to_result(
+                            file_path,
+                            ocr_lang=ocr_lang,
+                            preferred_backend=preferred_backend,
+                            cancel_check=self.is_cancelled,
+                        )
+                        text = doc_res.text
+                    else:
+                        text = ocr_pdf_to_text(
+                            file_path,
+                            ocr_lang=ocr_lang,
+                            preferred_backend=preferred_backend,
+                            cancel_check=self.is_cancelled,
+                        )
                     if self.is_cancelled():
                         logger.info("Распознавание PDF отменено перед сохранением %s", filename)
                         break

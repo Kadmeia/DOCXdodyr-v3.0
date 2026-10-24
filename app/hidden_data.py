@@ -34,7 +34,7 @@ HIDDEN_DATA_KINDS = (
     "javascript", "macros", "custom_xml", "external_links", "document_properties",
     "image_exif_xmp", "pdf_info", "pdf_xmp", "digital_signature", "encrypted_pdf",
 )
-TEXTUAL_HIDDEN_KINDS = frozenset({"comments", "footnotes", "endnotes", "hidden_text"})
+TEXTUAL_HIDDEN_KINDS = frozenset({"comments", "footnotes", "endnotes", "hidden_text", "acroform", "annotations"})
 DESTRUCTIVE_HIDDEN_KINDS = frozenset({
     "comments", "footnotes", "endnotes", "hidden_text", "tracked_changes",
     "embedded_objects", "embedded_files", "annotations", "acroform", "javascript",
@@ -542,6 +542,13 @@ def _transform_word_xml(data: bytes, *, comments: bool, notes: bool, revisions: 
                     parent.insert(index + offset, grandchild)
                 removed.add(local)
                 continue
+            if local in {"comment", "person"} and text_transform is not None:
+                for attr_key, attr_val in list(child.attrib.items()):
+                    if _local_name(attr_key) in {"author", "initials"} and attr_val:
+                        transformed_attr = text_transform(attr_val, "comments")
+                        if transformed_attr != attr_val:
+                            child.attrib[attr_key] = transformed_attr
+                            removed.add("anonymized_comments_author")
             transform_this_text = text_kind != "hidden_text" or inside_hidden_run
             if local == "t" and text_transform is not None and child.text and transform_this_text:
                 transformed = text_transform(child.text, text_kind)
@@ -701,8 +708,11 @@ def _strip_image_metadata(data: bytes, part: str) -> tuple[bytes, bool]:
 
 
 def _sanitize_pdf(source: Path, target: Path, report: HiddenDataReport, *, annotations: bool, attachments: bool,
-                  xmp_exif: bool, forms: bool = False, javascript: bool = False) -> None:
+                  xmp_exif: bool, forms: bool = False, javascript: bool = False,
+                  text_transform: Optional[Any] = None, text_kinds: Optional[Any] = None) -> None:
     from pypdf import PdfReader, PdfWriter
+    source = Path(source)
+    target = Path(target)
     reader = PdfReader(str(source), strict=False)
     if reader.is_encrypted:
         raise HiddenDataError("Зашифрованный PDF нельзя безопасно очистить без пароля")
@@ -732,6 +742,73 @@ def _sanitize_pdf(source: Path, target: Path, report: HiddenDataReport, *, annot
                         else:
                             retained.append(annot_ref)
                     page_obj["/Annots"] = retained
+
+    # Анонимизация текстовых аннотаций и интерактивных форм (AcroForm) по плейсхолдерам
+    if text_transform is not None and text_kinds:
+        from pypdf.generic import NameObject, TextStringObject
+        for page in writer.pages:
+            page_obj = _pdf_obj(page)
+            if "/Annots" in page_obj and not annotations:
+                annots = _pdf_obj(page_obj.get("/Annots"))
+                for annot_ref in annots or ():
+                    annot = _pdf_obj(annot_ref)
+                    if not hasattr(annot, "get"):
+                        continue
+                    if "annotations" in text_kinds:
+                        if "/Contents" in annot and annot["/Contents"]:
+                            try:
+                                raw_c = str(annot["/Contents"])
+                                new_c = text_transform(raw_c, "annotations")
+                                if new_c != raw_c:
+                                    annot[NameObject("/Contents")] = TextStringObject(new_c)
+                                    report.removed.append("anonymized_annotations")
+                                    report.changed = True
+                            except Exception:
+                                pass
+                        if "/T" in annot and annot["/T"]:
+                            try:
+                                raw_t = str(annot["/T"])
+                                new_t = text_transform(raw_t, "annotations")
+                                if new_t != raw_t:
+                                    annot[NameObject("/T")] = TextStringObject(new_t)
+                                    report.removed.append("anonymized_annotations_author")
+                                    report.changed = True
+                            except Exception:
+                                pass
+                    if "acroform" in text_kinds and annot.get("/Subtype") == "/Widget" and not forms:
+                        for f_key in ("/V", "/TU"):
+                            if f_key in annot and annot[f_key]:
+                                try:
+                                    raw_v = str(annot[f_key])
+                                    new_v = text_transform(raw_v, "acroform")
+                                    if new_v != raw_v:
+                                        annot[NameObject(f_key)] = TextStringObject(new_v)
+                                        report.removed.append("anonymized_acroform")
+                                        report.changed = True
+                                except Exception:
+                                    pass
+
+        if "acroform" in text_kinds and not forms:
+            root_obj = _pdf_obj(writer._root_object)
+            if hasattr(root_obj, "get") and "/AcroForm" in root_obj:
+                acro = _pdf_obj(root_obj.get("/AcroForm"))
+                if hasattr(acro, "get"):
+                    fields = _pdf_obj(acro.get("/Fields"))
+                    for field_ref in fields or ():
+                        fld = _pdf_obj(field_ref)
+                        if hasattr(fld, "get"):
+                            for f_key in ("/V", "/TU"):
+                                if f_key in fld and fld[f_key]:
+                                    try:
+                                        raw_v = str(fld[f_key])
+                                        new_v = text_transform(raw_v, "acroform")
+                                        if new_v != raw_v:
+                                            fld[NameObject(f_key)] = TextStringObject(new_v)
+                                            report.removed.append("anonymized_acroform")
+                                            report.changed = True
+                                    except Exception:
+                                        pass
+
     if attachments:
         root_obj = _pdf_obj(writer._root_object)
         names = _pdf_obj(root_obj.get("/Names")) if hasattr(root_obj, "get") else None
@@ -872,7 +949,7 @@ def apply_hidden_data_policy(
     suffix = source.suffix.lower()
     remove = {key for key, action in normalized.items() if action == "remove"}
     anonymize = {key for key, action in normalized.items() if action == "anonymize"}
-    if suffix == ".pdf" and anonymize & {"annotations", "embedded_files", "pdf_info", "pdf_xmp"}:
+    if suffix == ".pdf" and anonymize & {"embedded_files", "pdf_info", "pdf_xmp", "image_exif_xmp", "javascript", "macros", "custom_xml"}:
         raise HiddenDataError("Обезличивание этой PDF-структуры не поддерживается; выберите удаление")
     if suffix in {".docx", ".docm", ".xlsx", ".xlsm", ".xltx", ".xltm", ".pptx", ".pptm"}:
         temp = target.with_name("." + target.name + ".policy.tmp")
@@ -907,11 +984,13 @@ def apply_hidden_data_policy(
     elif suffix == ".pdf":
         _sanitize_pdf(
             source, target, report,
-            annotations="annotations" in remove or "acroform" in remove,
+            annotations="annotations" in remove,
             attachments=bool(remove & {"embedded_files", "embedded_objects"}),
             xmp_exif=bool(remove & {"pdf_xmp", "image_exif_xmp"}),
             forms="acroform" in remove,
             javascript="javascript" in remove,
+            text_transform=text_transform if anonymize else None,
+            text_kinds=anonymize & TEXTUAL_HIDDEN_KINDS,
         )
         if "pdf_info" in remove:
             report.removed.append("pdf_info")

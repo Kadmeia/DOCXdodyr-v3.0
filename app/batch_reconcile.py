@@ -276,18 +276,92 @@ def reconcile_markdown(path: str | os.PathLike, mapping: dict) -> int:
     return count
 
 
+def reconcile_raw_text(path: str | os.PathLike, mapping: dict) -> int:
+    """Reconcile raw text files against the batch mapping."""
+    source = Path(path)
+    try:
+        raw_bytes = source.read_bytes()
+        try:
+            text = raw_bytes.decode("utf-8")
+            encoding = "utf-8"
+        except UnicodeDecodeError:
+            text = raw_bytes.decode("cp1251", errors="replace")
+            encoding = "cp1251"
+    except Exception:
+        return 0
+    reconciled, count = reconcile_text(text, mapping)
+    if count:
+        fd, temp_name = tempfile.mkstemp(prefix=f".{source.stem}.", suffix=source.suffix, dir=source.parent)
+        os.close(fd)
+        try:
+            with open(temp_name, "w", encoding=encoding) as f:
+                f.write(reconciled)
+            os.replace(temp_name, source)
+        except Exception:
+            try:
+                os.unlink(temp_name)
+            except OSError:
+                pass
+            raise
+    return count
+
+
+def reconcile_pptx(path: str | os.PathLike, mapping: dict) -> int:
+    """Reconcile PPTX presentation slides and notes against the batch mapping."""
+    source = Path(path)
+    if not source.is_file() or not zipfile.is_zipfile(source):
+        logger.warning("Пропуск файла для сверки PPTX (не является валидным ZIP/PPTX): %s", source)
+        return 0
+    fd, temp_name = tempfile.mkstemp(prefix=f".{source.stem}.", suffix=source.suffix, dir=source.parent)
+    os.close(fd)
+    total = 0
+    try:
+        with zipfile.ZipFile(source, "r") as zin, zipfile.ZipFile(temp_name, "w") as zout:
+            for item in zin.infolist():
+                data = zin.read(item.filename)
+                if item.filename.endswith(".xml") and ("ppt/slides/" in item.filename or "ppt/notesSlides/" in item.filename or "ppt/comments/" in item.filename):
+                    try:
+                        root = etree.fromstring(data)
+                        ns = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main", "p": "http://schemas.openxmlformats.org/presentationml/2006/main"}
+                        paragraphs = root.xpath(".//a:p", namespaces=ns)
+                        part_total = 0
+                        for paragraph in paragraphs:
+                            part_total += _replace_across_nodes(
+                                paragraph.xpath(".//a:t", namespaces=ns), mapping
+                            )
+                        if part_total:
+                            total += part_total
+                            data = etree.tostring(root, xml_declaration=True, encoding="UTF-8")
+                    except (etree.XMLSyntaxError, ValueError):
+                        pass
+                zout.writestr(item, data)
+        os.replace(temp_name, source)
+        return total
+    except Exception:
+        try:
+            os.unlink(temp_name)
+        except OSError:
+            pass
+        raise
+
+
 def reconcile_document(path: str | os.PathLike, mapping: dict) -> int:
     suffix = Path(path).suffix.casefold()
     if suffix in {".docx", ".docm"}:
         return reconcile_docx(path, mapping)
     if suffix in {".xlsx", ".xlsm"}:
         return reconcile_xlsx(path, mapping)
+    if suffix in {".pptx", ".pptm"}:
+        return reconcile_pptx(path, mapping)
     if suffix == ".md":
         return reconcile_markdown(path, mapping)
+    if suffix in {".txt", ".log", ".csv", ".json"}:
+        return reconcile_raw_text(path, mapping)
     return 0
 
 
 __all__ = [
     "reconcile_text", "reconcile_docx", "reconcile_xlsx", "reconcile_markdown",
+    "reconcile_raw_text", "reconcile_pptx",
     "reconcile_document", "transform_docx_paragraphs",
 ]

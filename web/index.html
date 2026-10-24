@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DOCXдодыр v3.0</title>
+    <title>DOCXдодыр v3.1</title>
     <!-- Стили собраны локально: интерфейс не зависит от CDN и работает офлайн. -->
     <link href="tailwind.generated.css" rel="stylesheet">
     <style>
@@ -753,7 +753,7 @@
             box-shadow: 0 2px 6px rgba(99, 102, 241, 0.12) !important;
         }
 
-        /* Кнопки "Проверить находки", "Проверить скрытые данные" и "Сообщить о баге" */
+        /* Кнопки "Проверить находки" и "Сообщить о баге" */
         html:not(.dark) #btn-review-findings {
             border: 1.5px solid #93c5fd !important;
             background-color: #eff6ff !important;
@@ -766,30 +766,18 @@
             border-color: #3b82f6 !important;
             box-shadow: 0 2px 6px rgba(59, 130, 246, 0.16) !important;
         }
-        html:not(.dark) #btn-hidden-data {
+        html:not(.dark) #btn-report-bug {
             border: 1.5px solid #fcd34d !important;
             background-color: #fffbeb !important;
             color: #92400e !important;
             box-shadow: 0 1px 2px rgba(245, 158, 11, 0.08) !important;
             transition: all 0.18s ease-in-out !important;
         }
-        html:not(.dark) #btn-hidden-data:hover {
+        html:not(.dark) #btn-report-bug:hover {
             background-color: #fef3c7 !important;
             border-color: #f59e0b !important;
+            color: #78350f !important;
             box-shadow: 0 2px 6px rgba(245, 158, 11, 0.16) !important;
-        }
-        html:not(.dark) #btn-report-bug {
-            border: 1.5px solid #fecdd3 !important;
-            background-color: #fff1f2 !important;
-            color: #9f1239 !important;
-            box-shadow: 0 1px 2px rgba(244, 63, 94, 0.08) !important;
-            transition: all 0.18s ease-in-out !important;
-        }
-        html:not(.dark) #btn-report-bug:hover {
-            background-color: #ffe4e6 !important;
-            border-color: #f43f5e !important;
-            color: #881337 !important;
-            box-shadow: 0 2px 6px rgba(244, 63, 94, 0.16) !important;
         }
 
         /* Блок «Форматы сохранения»: четкие границы и подсветка при наведении */
@@ -1335,7 +1323,7 @@
             <div class="min-w-0">
             <h1 class="text-lg font-semibold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
                 <svg id="app-icon" class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                DOCXдодыр <span id="app-version-badge" class="text-sm font-medium text-slate-400 dark:text-slate-500">v3.0</span>
+                DOCXдодыр <span id="app-version-badge" class="text-sm font-medium text-slate-400 dark:text-slate-500">v3.1</span>
             </h1>
             <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 pl-7">Локальная обработка документов</p>
             </div>
@@ -1374,7 +1362,7 @@
                     </div>
                     <div>
                         <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Нажмите для выбора файлов или перетащите их сюда</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Поддерживаемые форматы: .docx, .xlsx, .pdf, .jpg, .png, .tiff, .bmp, .webp</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Поддерживаемые форматы: DOCX, XLSX, PPTX, PDF, TXT, LOG, CSV, MD, JSON, сканы и фото</p>
                     </div>
                 </div>
             </div>
@@ -1383,7 +1371,7 @@
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div class="min-w-0 flex-1">
                         <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Обезличить папку целиком</h2>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Перетащите сюда папку или выберите её кнопкой. Все документы (DOCX, XLSX, PDF, сканы и фото) будут обработаны. Результаты попадут в подпапку «Обезличенные документы», исходные файлы не изменяются.</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Перетащите сюда папку или выберите её кнопкой. Все документы (DOCX, XLSX, PPTX, PDF, TXT, LOG, CSV, сканы и фото) будут обработаны. Результаты попадут в подпапку «Обезличенные документы», исходные файлы не изменяются.</p>
                     </div>
                     <button id="btn-select-folder" type="button" onclick="openFolderDialog('anonymize_folder')" class="flex-shrink-0 px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
                         Выбрать папку
@@ -1411,7 +1399,7 @@
                             Готово
                         </span>
                     </div>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Если ни один формат не выбран, сохраняется исходный формат (DOCX→DOCX, XLSX→XLSX, PDF→PDF, фото→PDF). При выборе форматов создаются только выбранные.</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Если ни один формат не выбран, сохраняется исходный формат (DOCX→DOCX, XLSX→XLSX, PPTX→PPTX, PDF→PDF, TXT→TXT, фото→PDF). При выборе форматов создаются только выбранные.</p>
                     
                     <div class="flex flex-col gap-2.5">
                         <label class="save-format-item flex items-center justify-between cursor-pointer group">
@@ -1432,6 +1420,13 @@
                             <span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-all">Документ Markdown <span class="text-slate-400 dark:text-slate-500 text-xs ml-1">(.md)</span></span>
                             <div class="relative flex-shrink-0">
                                 <input type="checkbox" id="cb-save-md" class="sr-only toggle-checkbox">
+                                <div class="toggle-label dark:bg-slate-700"></div>
+                            </div>
+                        </label>
+                        <label class="save-format-item flex items-center justify-between cursor-pointer group">
+                            <span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-all">Текстовый документ <span class="text-slate-400 dark:text-slate-500 text-xs ml-1">(.txt)</span></span>
+                            <div class="relative flex-shrink-0">
+                                <input type="checkbox" id="cb-save-txt" class="sr-only toggle-checkbox">
                                 <div class="toggle-label dark:bg-slate-700"></div>
                             </div>
                         </label>
@@ -1479,16 +1474,13 @@
                         <h3 class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">Быстрые действия</h3>
                         <button onclick="runAction('pdf_ocr')" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                            Распознавание PDF
+                            Распознавание PDF / JPG
                         </button>
                         <button id="btn-review-findings" onclick="showReviewModal()" class="hidden w-full px-4 py-2 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-sm font-medium rounded-lg transition-all border border-blue-100 dark:border-blue-500/20 flex items-center justify-center gap-2">
                             Проверить находки
                         </button>
-                        <button id="btn-hidden-data" onclick="openHiddenDataPicker()" class="w-full px-4 py-2 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/20 text-sm font-medium rounded-lg transition-all border border-amber-100 dark:border-amber-500/20 flex items-center justify-center gap-2">
-                            Проверить скрытые данные
-                        </button>
-                        <button id="btn-report-bug" onclick="showReportBugModal()" class="w-full px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2">
-                            <svg class="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        <button id="btn-report-bug" onclick="showReportBugModal()" class="w-full px-4 py-2 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/20 text-sm font-medium rounded-lg transition-all border border-amber-100 dark:border-amber-500/20 flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                             Сообщить о баге
                         </button>
                     </div>
