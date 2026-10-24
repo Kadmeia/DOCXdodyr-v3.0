@@ -649,11 +649,14 @@ class _IndraOCRBackend:
     def recognize_regions(self, image_bytes: bytes) -> list[OCRTextRegion]:
         try:
             from PIL import Image
-            import numpy as np
 
             image_obj = Image.open(BytesIO(image_bytes))
             width, height = image_obj.size
-            gray = np.array(image_obj.convert("L"))
+            try:
+                import numpy as np
+                gray = np.array(image_obj.convert("L"))
+            except ImportError:
+                gray = image_obj.convert("L")
             page = self._converter.ocr(gray)
 
             results: list[OCRTextRegion] = []

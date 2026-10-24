@@ -2503,19 +2503,10 @@ class BackendApi:
         # single-file API and prevents accidental writes next to user files.
         if output_dir is not None:
             output_root = Path(output_dir)
-            try:
-                output_root.mkdir(parents=True, exist_ok=True)
-                test_probe = output_root / f".docxdodyr_write_test_{uuid.uuid4().hex[:8]}"
-                test_probe.touch()
-                test_probe.unlink(missing_ok=True)
-            except (OSError, PermissionError):
-                fallback_dir = Path.home() / "Downloads" / "DOCXdodyr_Output"
-                fallback_dir.mkdir(parents=True, exist_ok=True)
-                logger.warning(
-                    "Папка вывода %s недоступна для записи. Перенаправляем результат в: %s",
-                    output_root, fallback_dir
-                )
-                output_root = fallback_dir
+            output_root.mkdir(parents=True, exist_ok=True)
+            test_probe = output_root / f".docxdodyr_write_test_{uuid.uuid4().hex[:8]}"
+            test_probe.touch()
+            test_probe.unlink(missing_ok=True)
         else:
             output_root = file_p.parent
             try:
