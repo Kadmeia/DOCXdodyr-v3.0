@@ -806,10 +806,13 @@ class BackendApi:
                         # One explicitly selected shared decoder applies to all
                         # documents; equal-sized selections are paired by index.
                         decoder = selected_decoders[index] if len(selected_decoders) == len(document_paths) else selected_decoders[0]
+                        is_explicit = True
                     elif auto_decoder:
-                        decoder = find_decoder_near_document(doc_path_obj)
+                        decoder = find_decoder_near_document(doc_path_obj, allow_edited=True)
+                        is_explicit = False
                     else:
                         decoder = None
+                        is_explicit = False
                     if decoder is None or not Path(decoder).exists():
                         raise ValueError("не найден файл-дешифратор")
                     with Path(decoder).open("r", encoding="utf-8") as stream:
@@ -817,7 +820,8 @@ class BackendApi:
                     if not is_valid_decoder_structure(mapping):
                         raise ValueError("некорректная структура дешифратора")
 
-                    restorer = DocumentRestorer(mapping)
+                    bound_path = Path(decoder) if is_explicit else None
+                    restorer = DocumentRestorer(mapping, allow_edited=True, bound_decoder_path=bound_path)
                     suffix = doc_path_obj.suffix.lower()
                     if suffix in (".docx", ".docm"):
                         ok, msg = restorer.restore_docx(str(doc_path_obj))
