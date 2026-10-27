@@ -354,6 +354,7 @@ def _bound_decoder_for_document(document, allow_edited: bool = False):
         doc_matched = False
         doc_edited_matched = False
         batch_folder_matched = False
+        is_batch_decoder = bool(re.fullmatch(r"(?:дешифратор|decoder)(?:_\d+)?", candidate.stem.lower()))
         for doc_entry in docs:
             if not isinstance(doc_entry, dict):
                 continue
@@ -393,14 +394,14 @@ def _bound_decoder_for_document(document, allow_edited: bool = False):
                         raise ValueError("Привязанный дешифратор имеет неверную структуру")
                     doc_edited_matched = True
                     break
-                elif cand_doc_resolved.parent == document.parent.resolve() or candidate.parent == document.parent.resolve():
+                elif is_batch_decoder and (cand_doc_resolved.parent == document.parent.resolve() or candidate.parent == document.parent.resolve()):
                     batch_folder_matched = True
             except ValueError:
                 raise
             except Exception:
                 pass
 
-        if not doc_matched and not doc_edited_matched and batch_folder_matched:
+        if not doc_matched and not doc_edited_matched and batch_folder_matched and is_batch_decoder:
             if is_valid_decoder_structure(data):
                 doc_edited_matched = True
 
@@ -574,12 +575,8 @@ def find_decoder_near_document(doc_path, *, max_parent_levels=4, max_decoder_byt
                     if cand.stat().st_size <= max_decoder_bytes:
                         data = json.loads(cand.read_text(encoding="utf-8"))
                         if is_valid_decoder_structure(data):
-                            # Общий дешифратор в родительской папке принимается только при наличии привязки к документу
-                            # либо если документ находится в папке вывода этого пакета
-                            if level > 0 and cand.stem.lower() in ("дешифратор", "decoder"):
-                                meta = data.get(META_KEY) or (data if data.get("schema") in (BINDING_SCHEMA_V2, DECODER_SCHEMA_V2) else None)
-                                if not meta or not isinstance(meta, dict):
-                                    continue
+                            meta = data.get(META_KEY) or (data if data.get("schema") in (BINDING_SCHEMA_V2, DECODER_SCHEMA_V2) else None)
+                            if meta and isinstance(meta, dict) and meta.get("documents"):
                                 docs = meta.get("documents", [])
                                 norm_doc = normalize_document_stem(p.stem).casefold()
                                 has_doc = any(
@@ -590,7 +587,8 @@ def find_decoder_near_document(doc_path, *, max_parent_levels=4, max_decoder_byt
                                     (cand.parent / Path(d.get("path", ""))).parent.resolve() == p.parent.resolve()
                                     for d in docs if isinstance(d, dict)
                                 )
-                                if not has_doc and not in_output_dir:
+                                is_batch = cand.stem.lower() in ("дешифратор", "decoder")
+                                if not has_doc and not (is_batch and in_output_dir):
                                     continue
                             return cand.resolve()
                 except Exception:
@@ -630,16 +628,7 @@ class DocumentRestorer:
             return
 
         is_edited = self.allow_edited or is_edited_document_stem(path_obj.stem)
-        try:
-            decoder = _bound_decoder_for_document(path_obj, allow_edited=is_edited)
-        except ValueError as exc:
-            cand = find_decoder_near_document(path_obj, allow_edited=is_edited)
-            if cand and cand.is_file():
-                raw_mapping = json.loads(cand.read_text(encoding="utf-8"))
-                mapping = extract_decoder_mapping(raw_mapping)
-                if mapping == self.mapping_dict:
-                    return
-            raise
+        decoder = _bound_decoder_for_document(path_obj, allow_edited=is_edited)
         raw_mapping = json.loads(decoder.read_text(encoding="utf-8"))
         mapping = extract_decoder_mapping(raw_mapping)
         if mapping != self.mapping_dict:
@@ -1058,8 +1047,9 @@ def restore_document(
                     bound = find_decoder_near_document(doc_p, allow_edited=False)
                     if bound is not None and bound != dec_p:
                         raise ValueError("Выбранный дешифратор не привязан к документу")
+    bound_path = dec_p if decoder_path is not None else None
     data = json.loads(dec_p.read_text(encoding="utf-8"))
-    restorer = DocumentRestorer(data, allow_edited=is_edited, bound_decoder_path=dec_p)
+    restorer = DocumentRestorer(data, allow_edited=is_edited, bound_decoder_path=bound_path)
     suffix = doc_p.suffix.lower()
     if suffix in {".docx", ".docm"}:
         target_out = Path(output_path) if output_path else doc_p.parent / f"{doc_p.stem}_восстановлено{doc_p.suffix}"
