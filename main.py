@@ -1380,11 +1380,11 @@ def handle_cli_arguments() -> bool:
             for target_str in clean_paths:
                 target = Path(target_str).resolve()
                 if target.is_dir():
-                    files = [
+                    files = sorted([
                         Path(root) / f
                         for root, _, names in os.walk(target)
                         for f in names if Path(f).suffix.lower() in supported
-                    ]
+                    ])
                 else:
                     files = [target]
 
