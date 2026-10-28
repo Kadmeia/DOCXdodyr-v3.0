@@ -112,11 +112,11 @@ def test_fault_injection_batch_pipeline_failure_leaves_no_partial_publish(tmp_pa
 
 
 def test_ocr_backend_apple_vision_fallback():
-    """Проверяет корректность инициализации и доступности Apple Vision/Tesseract."""
+    """Проверяет корректность инициализации и доступности Apple Vision/Indra."""
     backend_names = ocr_backend.available_backend_names()
     assert isinstance(backend_names, tuple)
     if sys.platform == "darwin":
-        assert "applevision" in backend_names or "tesseract" in backend_names or len(backend_names) >= 0
+        assert "applevision" in backend_names or "indra" in backend_names or len(backend_names) >= 0
 
 
 def test_cli_self_test_and_diagnostics(monkeypatch):

@@ -25,9 +25,9 @@ def get_system_capability_matrix(backend_instance: Any = None) -> Dict[str, Any]
     if sys.platform == "darwin":
         ocr_desc = "Apple Vision Framework (нативно, русский/английский, оффлайн)"
     elif sys.platform == "win32":
-        ocr_desc = "Tesseract OCR (локальная установка, русский/английский, оффлайн)"
+        ocr_desc = "Indra OCR (нейросеть ONNX, русский/английский, оффлайн)"
     else:
-        ocr_desc = "Tesseract OCR (оффлайн)"
+        ocr_desc = "Indra OCR (оффлайн)"
 
     # 2. PDF конвертация
     pdf_conv = pdf_convert.get_pdf_conversion_status()

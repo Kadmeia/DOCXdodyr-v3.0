@@ -3,8 +3,8 @@
 
 The module deliberately imports OCR engines lazily.  Importing DOCXdodyr must
 not download a model or require a command line OCR executable.  On macOS Apple
-Vision is first, followed by a locally installed Tesseract and optional
-PaddleOCR fallback. Other platforms retain their own adapter order.
+Vision is first, followed by Indra OCR. On Windows and Linux Indra OCR
+is the primary local neural offline engine.
 """
 
 from __future__ import annotations
@@ -387,54 +387,6 @@ def _module_available(name: str) -> bool:
         return False
 
 
-def _find_tessdata_dir() -> str | None:
-    """Find directory containing traineddata files (rus.traineddata / eng.traineddata)."""
-    env_dir = os.environ.get("TESSDATA_PREFIX")
-    if env_dir:
-        p = Path(env_dir)
-        if (p / "rus.traineddata").is_file():
-            return str(p)
-        if (p / "tessdata" / "rus.traineddata").is_file():
-            return str(p / "tessdata")
-    candidates = [
-        Path(getattr(sys, "_MEIPASS", "")) / "resources" / "tessdata" if getattr(sys, "_MEIPASS", None) else None,
-        Path(sys.executable).parent / "resources" / "tessdata",
-        Path(sys.executable).parent / "_internal" / "resources" / "tessdata",
-        app_paths.get_bundle_dir() / "resources" / "tessdata",
-        app_paths.get_bundle_dir() / "tessdata",
-        Path.home() / ".docxdodyr" / "tessdata",
-        Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Tesseract-OCR" / "tessdata" if os.environ.get("LOCALAPPDATA") else None,
-        Path(r"C:\Program Files\Tesseract-OCR\tessdata"),
-    ]
-    for candidate in candidates:
-        if candidate and (candidate / "rus.traineddata").is_file():
-            return str(candidate)
-    return None
-
-
-def _tesseract_command() -> str | None:
-    """Find a local Tesseract binary, including Homebrew paths absent from Finder's PATH."""
-    command = shutil.which("tesseract")
-    if command:
-        return command
-    if sys.platform == "darwin":
-        for candidate in ("/opt/homebrew/bin/tesseract", "/usr/local/bin/tesseract"):
-            if Path(candidate).is_file() and os.access(candidate, os.X_OK):
-                return candidate
-    if sys.platform == "win32":
-        win_candidates = [
-            os.environ.get("TESSERACT_PATH"),
-            r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-            r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-            str(Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Tesseract-OCR" / "tesseract.exe") if os.environ.get("LOCALAPPDATA") else None,
-            str(app_paths.get_bundle_dir() / "resources" / "tesseract_win" / "tesseract.exe"),
-        ]
-        for candidate in win_candidates:
-            if candidate and Path(candidate).is_file():
-                return candidate
-    return None
-
-
 def available_backend_names(platform_name: str | None = None) -> tuple[str, ...]:
     """Return lightweight availability information without loading models."""
 
@@ -446,8 +398,6 @@ def available_backend_names(platform_name: str | None = None) -> tuple[str, ...]
         result.append("applevision")
     if _module_available("paddleocr"):
         result.append("paddleocr")
-    if (_module_available("pytesseract") and _tesseract_command()) or (_module_available("fitz") and _find_tessdata_dir()):
-        result.append("tesseract")
     return tuple(result)
 
 
@@ -683,127 +633,7 @@ class _IndraOCRBackend:
         return [region.text for region in self.recognize_regions(image_bytes)]
 
 
-class _TesseractOCRBackend:
-    name = "tesseract"
-    label = "Tesseract (LSTM Neural)"
 
-    def __init__(self, language: str = "rus+eng") -> None:
-        mapping = {"ru": "rus", "en": "eng", "rus+eng": "rus+eng"}
-        self._lang = mapping.get(language, language)
-        self._engine = None
-        self._tessdata_dir = _find_tessdata_dir()
-        if self._tessdata_dir and not os.environ.get("TESSDATA_PREFIX"):
-            os.environ["TESSDATA_PREFIX"] = self._tessdata_dir
-
-        command = _tesseract_command()
-        if command and _module_available("pytesseract"):
-            try:
-                import pytesseract
-                pytesseract.pytesseract.tesseract_cmd = command
-                pytesseract.get_tesseract_version()
-                self._pytesseract = pytesseract
-                self._engine = "pytesseract"
-            except Exception:
-                self._engine = None
-
-        if not self._engine:
-            if _module_available("fitz") and self._tessdata_dir:
-                self._engine = "pymupdf"
-            else:
-                raise OCRBackendUnavailable(
-                    "Tesseract OCR недоступен: установите tesseract и pytesseract либо предоставьте языковые данные tessdata."
-                )
-
-    def recognize_regions(self, image_bytes: bytes) -> list[OCRTextRegion]:
-        if self._engine == "pymupdf":
-            try:
-                import fitz
-                img_doc = fitz.open(stream=image_bytes, filetype="png")
-                pdf_bytes = img_doc.convert_to_pdf()
-                pdf_doc = fitz.open("pdf", pdf_bytes)
-                page = pdf_doc[0]
-                pw, ph = page.rect.width, page.rect.height
-                tp = page.get_textpage_ocr(language=self._lang, tessdata=self._tessdata_dir)
-                d = page.get_text("dict", textpage=tp)
-                results: list[OCRTextRegion] = []
-                for b in d.get("blocks", []):
-                    for l in b.get("lines", []):
-                        line_text = "".join(s.get("text", "") for s in l.get("spans", [])).strip()
-                        if not line_text:
-                            continue
-                        lx0, ly0, lx1, ly1 = l.get("bbox")
-                        reg = _region(line_text, (lx0, ly0, lx1, ly1), 0.85, pw, ph)
-                        if reg:
-                            results.append(reg)
-                return results
-            except Exception as exc:
-                raise OCRBackendError(f"PyMuPDF Tesseract не смог распознать страницу: {exc}") from exc
-
-        try:
-            from PIL import Image
-            image_obj = Image.open(BytesIO(image_bytes)).convert("RGB")
-            # Tesseract does not reliably auto-rotate scanned forms. OSD is
-            # cheap compared with recognition and prevents an entire page
-            # from being returned in reverse/column-scrambled order.
-            try:
-                osd = self._pytesseract.image_to_osd(
-                    image_obj, output_type=self._pytesseract.Output.STRING
-                )
-                rotate_match = re.search(r"^Rotate:\s*(\d+)", osd, re.M)
-                confidence_match = re.search(
-                    r"^Orientation confidence:\s*([0-9.]+)", osd, re.M
-                )
-                rotation = int(rotate_match.group(1)) if rotate_match else 0
-                confidence = float(confidence_match.group(1)) if confidence_match else 0.0
-                if rotation in {90, 180, 270} and confidence >= 2.0:
-                    image_obj = image_obj.rotate(-rotation, expand=True)
-            except Exception:
-                # Sparse pages often do not have enough characters for OSD;
-                # normal OCR remains the safe fallback.
-                pass
-            width, height = image_obj.size
-            data = self._pytesseract.image_to_data(
-                image_obj, lang=self._lang, output_type=self._pytesseract.Output.DICT
-            )
-            lines_map: dict[tuple[int, int, int], list[dict]] = {}
-            n_boxes = len(data.get("text", []))
-            for i in range(n_boxes):
-                text = str(data["text"][i] or "").strip()
-                if not text:
-                    continue
-                key = (int(data["block_num"][i]), int(data["par_num"][i]), int(data["line_num"][i]))
-                if key not in lines_map:
-                    lines_map[key] = []
-                lines_map[key].append({
-                    "text": text,
-                    "left": int(data["left"][i]),
-                    "top": int(data["top"][i]),
-                    "width": int(data["width"][i]),
-                    "height": int(data["height"][i]),
-                    "conf": float(data["conf"][i]),
-                })
-            results: list[OCRTextRegion] = []
-            for words in lines_map.values():
-                if not words:
-                    continue
-                line_text = " ".join(w["text"] for w in words).strip()
-                if not line_text:
-                    continue
-                min_x = min(w["left"] for w in words)
-                min_y = min(w["top"] for w in words)
-                max_x = max(w["left"] + w["width"] for w in words)
-                max_y = max(w["top"] + w["height"] for w in words)
-                confs = [w["conf"] for w in words if w["conf"] >= 0]
-                avg_conf = sum(confs) / len(confs) if confs else 0.0
-                reg = _region(line_text, (min_x, min_y, max_x, max_y), avg_conf, width, height)
-                if reg:
-                    results.append(reg)
-            return results
-        except Exception as exc:
-            raise OCRBackendError(f"Tesseract не смог распознать страницу: {exc}") from exc
-
-    def recognize(self, image_bytes: bytes) -> list[str]:
-        return [region.text for region in self.recognize_regions(image_bytes)]
 
 
 def _paddle_regions(output: Any, width: int, height: int) -> list[OCRTextRegion]:
@@ -870,7 +700,6 @@ def create_ocr_backend(
         "applevision": lambda: _AppleVisionBackend(language),
         "indra": lambda: _IndraOCRBackend(language),
         "paddleocr": lambda: _PaddleOCRBackend(language),
-        "tesseract": lambda: _TesseractOCRBackend(language),
     }
     if platform_name == "darwin":
         defaults = ["applevision", "indra"]

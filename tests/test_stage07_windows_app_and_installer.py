@@ -117,7 +117,7 @@ def test_windows_ocr_backend_uses_supported_local_engines_only():
     import ocr_backend
 
     backends = ocr_backend.available_backend_names("win32")
-    assert set(backends).issubset({"tesseract", "paddleocr", "indra"})
+    assert set(backends).issubset({"paddleocr", "indra"})
 
     # Проверка чистоты лицензии в THIRD_PARTY_NOTICES.md
     notices_path = REPO_ROOT / "THIRD_PARTY_NOTICES.md"

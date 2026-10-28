@@ -38,6 +38,27 @@ def test_normalize_and_detect_edited_stems():
     assert normalize_document_stem("договор_cleaned") == "договор"
     assert is_edited_document_stem("договор_cleaned") is False
 
+    # Браузерные дубликаты скачивания из веб-интерфейса LLM:
+    assert normalize_document_stem("Договор_cleaned (1)") == "Договор"
+    assert is_edited_document_stem("Договор_cleaned (1)") is True
+    assert normalize_document_stem("Договор_cleaned (2)") == "Договор"
+    assert is_edited_document_stem("Договор_cleaned (2)") is True
+    assert normalize_document_stem("Договор (копия)") == "Договор"
+    assert is_edited_document_stem("Договор (копия)") is True
+    assert normalize_document_stem("Договор - копия") == "Договор"
+
+    # Англоязычные и популярные AI маркеры:
+    assert normalize_document_stem("Договор_cleaned_edited") == "Договор"
+    assert is_edited_document_stem("Договор_cleaned_edited") is True
+    assert normalize_document_stem("Договор_cleaned_revised") == "Договор"
+    assert is_edited_document_stem("Договор_cleaned_revised") is True
+    assert normalize_document_stem("Договор_gpt") == "Договор"
+    assert is_edited_document_stem("Договор_gpt") is True
+    assert normalize_document_stem("Договор_deepseek") == "Договор"
+    assert is_edited_document_stem("Договор_deepseek") is True
+    assert normalize_document_stem("Договор_правки_2") == "Договор"
+    assert is_edited_document_stem("Договор_правки_2") is True
+
 
 def test_restore_ai_edited_document_screenshot_scenario(tmp_path):
     """Сценарий со скриншота пользователя:
@@ -277,4 +298,156 @@ def test_restore_ai_generated_new_document_from_batch_folder_pipeline(tmp_path):
     assert restored_root.exists()
     root_text = Document(str(restored_root)).paragraphs[0].text
     assert "Справка: участники спора — Иванов Иван Иванович и Петров Петр Петрович." == root_text
+
+
+def test_restore_browser_duplicate_download_scenario(tmp_path):
+    """Сценарий скачивания отредактированного документа из браузера с суффиксом ' (1)':
+    1. Исходный файл: 'Претензия.docx', обезличенный: 'Претензия_cleaned.docx', дешифратор: 'Претензия_Дешифратор.json'.
+    2. Пользователь загружает в ChatGPT, тот возвращает правки.
+    3. Браузер сохраняет файл как 'Претензия_cleaned (1).docx'.
+    4. Автопоиск находит 'Претензия_Дешифратор.json', и восстанавливает без ошибок.
+    """
+    orig_cleaned = tmp_path / "Претензия_cleaned.docx"
+    doc_orig = Document()
+    doc_orig.add_paragraph("Претензия от заявителя [ФИО_1] к компании [ОРГ_1].")
+    doc_orig.save(orig_cleaned)
+
+    mapping = {
+        "[ФИО_1]": "Смирнов Алексей Владимирович",
+        "[ОРГ_1]": "ООО «ТехноСфера»",
+    }
+    decoder_file = tmp_path / "Претензия_Дешифратор.json"
+    decoder_file.write_text(json.dumps(mapping, ensure_ascii=False), encoding="utf-8")
+    publish_binding(decoder_file, [orig_cleaned], "session-browser-duplicate", emit_sidecars=False)
+
+    # Файл, скачанный браузером с дубликатом имени
+    downloaded_doc = tmp_path / "Претензия_cleaned (1).docx"
+    doc_edited = Document()
+    doc_edited.add_paragraph("Претензия от заявителя [ФИО_1] к компании [ОРГ_1].")
+    doc_edited.add_paragraph("Дополнительное требование: возврат денежных средств.")
+    doc_edited.save(downloaded_doc)
+
+    # 1. Автопоиск через find_decoder_near_document
+    found_dec = find_decoder_near_document(downloaded_doc, allow_edited=True)
+    assert found_dec == decoder_file.resolve()
+
+    # 2. Восстановление через restore_document
+    restored = restore_document(downloaded_doc, allow_edited=True)
+    assert restored.exists()
+    full_text = "\n".join(p.text for p in Document(str(restored)).paragraphs)
+    assert "Смирнов Алексей Владимирович" in full_text
+    assert "ООО «ТехноСфера»" in full_text
+    assert "[ФИО_1]" not in full_text
+
+    # 3. Восстановление через BackendApi (логика UI)
+    api = BackendApi.__new__(BackendApi)
+    api.restore_doc_paths = [str(downloaded_doc)]
+    api.restore_json_paths = []
+    api.auto_decoder = True
+    api.settings = {"auto_decoder": True}
+    api._window = None
+
+    result = api._run_restore()
+    assert len(result["successes"]) == 1
+    assert len(result["errors"]) == 0
+
+
+def test_restore_ai_model_suffix_scenarios(tmp_path):
+    """Сценарии сохранения файлов с суффиксами _edited, _deepseek, _gpt, (копия)."""
+    orig_cleaned = tmp_path / "Договор_cleaned.docx"
+    doc = Document()
+    doc.add_paragraph("Заказчик: [ФИО_1]")
+    doc.save(orig_cleaned)
+
+    dec_file = tmp_path / "Договор_Дешифратор.json"
+    dec_file.write_text(json.dumps({"[ФИО_1]": "Кузнецов Николай"}, ensure_ascii=False), encoding="utf-8")
+    publish_binding(dec_file, [orig_cleaned], "session-ai-suffixes", emit_sidecars=False)
+
+    for suffix in ("Договор_cleaned_edited.docx", "Договор_deepseek.docx", "Договор (копия).docx"):
+        edited_p = tmp_path / suffix
+        ed_doc = Document()
+        ed_doc.add_paragraph("Отредактировано: [ФИО_1]")
+        ed_doc.save(edited_p)
+
+        found = find_decoder_near_document(edited_p, allow_edited=True)
+        assert found == dec_file.resolve(), f"Не найден дешифратор для {suffix}"
+
+        res = restore_document(edited_p, allow_edited=True)
+        assert res.exists()
+        assert "Кузнецов Николай" in Document(str(res)).paragraphs[0].text
+
+
+def test_restore_arbitrary_filename_with_single_decoder_fallback(tmp_path):
+    """Сценарий правила единственного дешифратора:
+    Пользователь сохранил из нейросети файл с абсолютно произвольным именем 'ответ_нейросети.docx'.
+    В папке лежит ровно один дешифратор 'Договор_Дешифратор.json'.
+    Программа должна безопасно применить этот единственный дешифратор без требования совпадения стема.
+    """
+    orig_cleaned = tmp_path / "Договор_cleaned.docx"
+    doc_orig = Document()
+    doc_orig.add_paragraph("Заказчик: [ФИО_1]")
+    doc_orig.save(orig_cleaned)
+
+    dec_file = tmp_path / "Договор_Дешифратор.json"
+    dec_file.write_text(json.dumps({"[ФИО_1]": "Смирнов Алексей Владимирович"}, ensure_ascii=False), encoding="utf-8")
+    publish_binding(dec_file, [orig_cleaned], "session-single-fallback", emit_sidecars=False)
+
+    # Файл с совершенно произвольным именем от нейросети
+    ai_arbitrary_doc = tmp_path / "ответ_нейросети.docx"
+    doc_ai = Document()
+    doc_ai.add_paragraph("Итоговый проект соглашения. Заказчик: [ФИО_1].")
+    doc_ai.save(ai_arbitrary_doc)
+
+    # 1. find_decoder_near_document находит единственный дешифратор
+    found = find_decoder_near_document(ai_arbitrary_doc, allow_edited=True)
+    assert found == dec_file.resolve()
+
+    # 2. restore_document успешно восстанавливает документ
+    restored = restore_document(ai_arbitrary_doc, allow_edited=True)
+    assert restored.exists()
+    assert "Смирнов Алексей Владимирович" in Document(str(restored)).paragraphs[0].text
+
+    # 3. Через BackendApi (UI)
+    api = BackendApi.__new__(BackendApi)
+    api.restore_doc_paths = [str(ai_arbitrary_doc)]
+    api.restore_json_paths = []
+    api.auto_decoder = True
+    api.settings = {"auto_decoder": True}
+    api._window = None
+
+    result = api._run_restore()
+    assert len(result["successes"]) == 1
+    assert len(result["errors"]) == 0
+
+
+def test_restore_arbitrary_filename_fails_safely_when_multiple_decoders_present(tmp_path):
+    """Проверка безопасности: если в папке 2 или более разных дешифраторов,
+    программа НЕ должна угадывать наугад для файла с чужим именем 'ответ_нейросети.docx',
+    чтобы исключить подмену чужих персональных данных.
+    """
+    orig1 = tmp_path / "Договор_Иванов_cleaned.docx"
+    Document().save(orig1)
+    dec1 = tmp_path / "Договор_Иванов_Дешифратор.json"
+    dec1.write_text(json.dumps({"[ФИО_1]": "Иванов Иван"}, ensure_ascii=False), encoding="utf-8")
+    publish_binding(dec1, [orig1], "session-multi-1", emit_sidecars=False)
+
+    orig2 = tmp_path / "Договор_Петров_cleaned.docx"
+    Document().save(orig2)
+    dec2 = tmp_path / "Договор_Петров_Дешифратор.json"
+    dec2.write_text(json.dumps({"[ФИО_1]": "Петров Петр"}, ensure_ascii=False), encoding="utf-8")
+    publish_binding(dec2, [orig2], "session-multi-2", emit_sidecars=False)
+
+    # Произвольный файл, не связанный ни с Ивановым, ни с Петровым
+    ai_doc = tmp_path / "ответ_нейросети.docx"
+    Document().save(ai_doc)
+
+    # find_decoder_near_document возвращает None из-за неоднозначности
+    found = find_decoder_near_document(ai_doc, allow_edited=True)
+    assert found is None
+
+    # restore_document выбрасывает ошибку безопасной привязки вместо подмены чужих ПДн
+    with pytest.raises(ValueError, match="отсутствует привязка к документу"):
+        restore_document(ai_doc, allow_edited=True)
+
+
 

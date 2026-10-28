@@ -31,7 +31,14 @@ BINDING_SCHEMA_V2 = "docxdodyr.decoder-binding/v2"
 DECODER_SCHEMA_V2 = "docxdodyr.decoder/v2"
 
 _EDITED_SUFFIX_PATTERN = re.compile(
-    r"(?:[_\-\s]+(?:cleaned(?:[_\-]?\d+)?|правки?(?:[_\-]?\d+)?|чистовик(?:[_\-]?\d+)?|исправлен(?:ный|ная|ное|ые)?|пдн?|llm|ai|chatgpt|claude|qwen|ред(?:акция)?(?:[_\-]?\d+)?|восстановлен(?:о|ный|ная)?|изменен(?:о|ный|ная)?|new|копия|v\d+))+$",
+    r"(?:[\s_\-\.]*(?:"
+    r"\(\d+\)|\(\s*копия(?:\s*\d+)?\s*\)|-\s*копия(?:\s*\d+)?|"
+    r"cleaned(?:[_\-]?\d+)?|чистовик(?:[_\-]?\d+)?|правки?(?:[_\-]?\d+)?|исправлен(?:ный|ная|ное|ые)?(?:[_\-]?\d+)?|отредактирован(?:ный|ная|ное|ые)?(?:[_\-]?\d+)?|"
+    r"изменен(?:ный|ная|ное|ые|о)?(?:[_\-]?\d+)?|восстановлен(?:ный|ная|ное|ые|о)?(?:[_\-]?\d+)?|пдн(?:[_\-]?\d+)?|копия(?:[_\-]?\d+)?|"
+    r"ред(?:акция)?(?:[_\-]?\d+)?|версия(?:[_\-]?\d+)?|v\d+|new|draft|final|"
+    r"edited?|mod(?:ified)?|rev(?:ised|ision)?(?:[_\-]?\d+)?|output|result|"
+    r"llm|ai|chatgpt|gpt(?:[_\-]?\d+)?|claude(?:[_\-]?\d+)?|qwen(?:[_\-]?\d+)?|deepseek(?:[_\-]?\d+)?|gemini(?:[_\-]?\d+)?|copilot(?:[_\-]?\d+)?"
+    r")[\s_\-\.]*)+$",
     re.IGNORECASE,
 )
 
@@ -44,7 +51,7 @@ def normalize_document_stem(stem: str) -> str:
     prev = None
     while prev != curr:
         prev = curr
-        curr = _EDITED_SUFFIX_PATTERN.sub("", curr).strip(" _-")
+        curr = _EDITED_SUFFIX_PATTERN.sub("", curr).strip(" _-.")
     return curr or stem
 
 
@@ -54,8 +61,16 @@ def is_edited_document_stem(stem: str) -> bool:
     if norm.casefold() == stem.casefold():
         return False
     stem_lower = stem.lower()
-    edit_markers = ("правк", "чистовик", "исправлен", "ред", "пдн", "llm", "claude", "chatgpt", "qwen", "изменен")
-    return any(marker in stem_lower for marker in edit_markers)
+    edit_markers = (
+        "правк", "чистовик", "исправлен", "отредактирован", "изменен",
+        "ред", "пдн", "копия", "llm", "claude", "chatgpt", "gpt",
+        "qwen", "deepseek", "gemini", "copilot", "ai", "edit", "rev", "draft", "v",
+    )
+    if any(marker in stem_lower for marker in edit_markers):
+        return True
+    if re.search(r"\(\d+\)$", stem.strip()):
+        return True
+    return False
 
 
 
@@ -472,6 +487,32 @@ def _bound_decoder_for_document(document, allow_edited: bool = False):
     if target_decoders:
         return target_decoders[0]
 
+    if not target_decoders and is_edited:
+        # Fallback единственного дешифратора: если в каталоге документа (или родительских каталогах)
+        # существует ровно один валидный дешифратор, связываем его без требования совпадения стема.
+        try:
+            curr_dir = document.parent
+            for _ in range(4):
+                found_at_level = []
+                for p in curr_dir.glob("*.json"):
+                    if p.is_file() and not p.is_symlink() and p.stat().st_size <= 10 * 1024 * 1024:
+                        try:
+                            c_data = json.loads(p.read_text(encoding="utf-8"))
+                            if is_valid_decoder_structure(c_data):
+                                found_at_level.append(p.resolve())
+                        except Exception:
+                            pass
+                if len(found_at_level) == 1:
+                    return found_at_level[0]
+                elif len(found_at_level) > 1:
+                    # В папке несколько разных дешифраторов - неоднозначность, не угадываем во избежание подмены ПДн
+                    break
+                if curr_dir.parent == curr_dir:
+                    break
+                curr_dir = curr_dir.parent
+        except OSError:
+            pass
+
     raise ValueError("Нарушена безопасная привязка дешифратора: отсутствует привязка к документу")
 
 
@@ -593,6 +634,25 @@ def find_decoder_near_document(doc_path, *, max_parent_levels=4, max_decoder_byt
                             return cand.resolve()
                 except Exception:
                     pass
+
+        if is_edited:
+            level_decoders = []
+            try:
+                for j_file in curr.glob("*.json"):
+                    if j_file.is_file() and not j_file.is_symlink() and j_file.stat().st_size <= max_decoder_bytes:
+                        try:
+                            j_data = json.loads(j_file.read_text(encoding="utf-8"))
+                            if is_valid_decoder_structure(j_data):
+                                level_decoders.append(j_file.resolve())
+                        except Exception:
+                            pass
+            except OSError:
+                pass
+            if len(level_decoders) == 1:
+                return level_decoders[0]
+            elif len(level_decoders) > 1:
+                return None
+
         if curr.parent == curr:
             break
         curr = curr.parent

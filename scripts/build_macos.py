@@ -148,9 +148,13 @@ def build_app(clean: bool = True, arch: str | None = None, output_root: Path | N
         if output_root is None:
             if BUILD_DIR.exists():
                 shutil.rmtree(BUILD_DIR)
-            if APP_BUNDLE_PATH.exists():
+            if APP_BUNDLE_PATH.is_symlink():
+                APP_BUNDLE_PATH.unlink()
+            elif APP_BUNDLE_PATH.exists():
                 shutil.rmtree(APP_BUNDLE_PATH)
-            if app_bundle_path.exists():
+            if app_bundle_path.is_symlink():
+                app_bundle_path.unlink()
+            elif app_bundle_path.exists():
                 shutil.rmtree(app_bundle_path)
             if pyinstaller_config_dir.exists():
                 shutil.rmtree(pyinstaller_config_dir)
@@ -475,7 +479,8 @@ def main() -> None:
         sign_app(app_path, identity=args.identity)
 
     verify_macos_arch(app_path, args.arch)
-    verify_app(app_path)
+    if not args.skip_sign:
+        verify_app(app_path)
 
     if args.production:
         from scripts.audit_macos_deployment import audit

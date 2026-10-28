@@ -211,47 +211,6 @@ def test_macos_prefers_vision_then_indra(monkeypatch):
     assert backend_fallback is fake_indra
 
 
-def test_tesseract_finds_homebrew_binary_outside_path(monkeypatch):
-    monkeypatch.setattr(ocr_backend.shutil, "which", lambda _name: None)
-    monkeypatch.setattr(ocr_backend.sys, "platform", "darwin")
-    monkeypatch.setattr(
-        ocr_backend.Path, "is_file",
-        lambda path: path.as_posix() == "/opt/homebrew/bin/tesseract",
-    )
-    monkeypatch.setattr(ocr_backend.os, "access", lambda _path, _mode: True)
-
-    assert ocr_backend._tesseract_command() == "/opt/homebrew/bin/tesseract"
-
-
-@pytest.mark.skipif(sys.platform != "darwin", reason="Native macOS Tesseract smoke")
-def test_native_tesseract_recognizes_synthetic_jpg(tmp_path: Path, monkeypatch):
-    if not ocr_backend._module_available("pytesseract") or not ocr_backend._tesseract_command():
-        pytest.skip("Tesseract executable or pytesseract is unavailable")
-    from PIL import Image, ImageDraw, ImageFont
-
-    image_path = tmp_path / "synthetic.jpg"
-    image = Image.new("RGB", (1400, 300), "white")
-    font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Unicode.ttf", 52)
-    ImageDraw.Draw(image).text((40, 85), "SYNTHETIC DOCUMENT 12345", font=font, fill="black")
-    image.save(image_path, format="JPEG", quality=95)
-
-    result = ocr_backend.ocr_image_to_result(
-        image_path, ocr_lang="eng", preferred_backend="tesseract"
-    )
-
-    assert result.backend == "tesseract"
-    assert "DOCUMENT" in result.text.upper()
-
-    class FailedVision:
-        label = "Apple Vision"
-
-        def recognize_regions(self, _image_bytes):
-            raise ocr_backend.OCRBackendError("transient Vision failure")
-
-    monkeypatch.setattr(ocr_backend, "_AppleVisionBackend", lambda language: FailedVision())
-    fallback_result = ocr_backend.ocr_image_to_result(image_path, ocr_lang="eng")
-    assert fallback_result.backend == "tesseract"
-    assert "DOCUMENT" in fallback_result.text.upper()
 
 
 def test_pdf_ocr_renders_pages_and_uses_mock_backend(monkeypatch, tmp_path: Path):
@@ -385,7 +344,7 @@ def test_mixed_pdf_ocr_only_raster_page_and_preserves_structure(monkeypatch, tmp
 
 @pytest.mark.parametrize(
     ("backend_name", "expected_workers"),
-    (("applevision", 2), ("tesseract", 3)),
+    (("applevision", 2), ("indra", 2)),
 )
 def test_parallel_ocr_preserves_page_order(
     monkeypatch, tmp_path: Path, backend_name: str, expected_workers: int
@@ -500,7 +459,7 @@ def test_pdf_ocr_retries_apple_vision_after_transient_fallback(monkeypatch, tmp_
 
     def select_backend(**kwargs):
         if kwargs.get("excluded"):
-            return ocr_backend.OCRBackendInfo("tesseract", "Tesseract", "test"), fallback
+            return ocr_backend.OCRBackendInfo("indra", "Indra OCR", "test"), fallback
         return ocr_backend.OCRBackendInfo("applevision", "Apple Vision", "test"), vision
 
     monkeypatch.setattr(ocr_backend, "create_ocr_backend", select_backend)
@@ -509,7 +468,7 @@ def test_pdf_ocr_retries_apple_vision_after_transient_fallback(monkeypatch, tmp_
     first = pdf_convert.ocr_pdf_to_result(str(pdf_path), lang="vision-transient")
     second = pdf_convert.ocr_pdf_to_result(str(pdf_path), lang="vision-transient")
 
-    assert first.backend == "tesseract"
+    assert first.backend == "indra"
     assert second.backend == "applevision"
     assert vision.calls == 2
     assert len(fallback.pages) == 1
@@ -706,7 +665,7 @@ def test_pdf_ocr_replaces_silent_empty_page_with_better_backend(monkeypatch, tmp
         calls.append(kwargs)
         if kwargs.get("excluded"):
             return ocr_backend.OCRBackendInfo("applevision", "Apple Vision", "test"), fallback
-        return ocr_backend.OCRBackendInfo("tesseract", "Tesseract", "test"), empty
+        return ocr_backend.OCRBackendInfo("indra", "Indra OCR", "test"), empty
 
     monkeypatch.setattr(ocr_backend, "create_ocr_backend", select_backend)
     pdf_convert._OCR_BACKEND_CACHE.clear()
@@ -715,7 +674,7 @@ def test_pdf_ocr_replaces_silent_empty_page_with_better_backend(monkeypatch, tmp
 
     assert result.text == "Страница распознана\nООО «Ромашка»"
     assert result.backend == "applevision"
-    assert calls[1]["excluded"] == {"tesseract"}
+    assert calls[1]["excluded"] == {"indra"}
 
 
 def test_text_pdf_fast_path_skips_ocr(monkeypatch):
@@ -872,7 +831,7 @@ def test_ocr_image_format_accepted_by_ocr_result_pipeline(tmp_path, monkeypatch,
     """BUG-07: ocr_image_to_result принимает BMP/TIFF/WebP и возвращает структуру OCRResult."""
     img_path = _make_synthetic_image(tmp_path, extension)
 
-    # Мокируем OCR-движок чтобы не требовать Apple Vision / Tesseract
+    # Мокируем OCR-движок чтобы не требовать Apple Vision / Indra
     fake_result = ocr_backend.OCRDocumentResult(
         text="Тест распознавания",
         pages=[
@@ -936,7 +895,7 @@ def test_pdf_ocr_page_fallback_does_not_replace_primary_for_next_page(monkeypatc
 
     def select_backend(**kwargs):
         if kwargs.get("excluded"):
-            return ocr_backend.OCRBackendInfo("tesseract", "Alternative", "test"), alternative
+            return ocr_backend.OCRBackendInfo("indra", "Alternative", "test"), alternative
         return ocr_backend.OCRBackendInfo("applevision", "Primary", "test"), primary
 
     monkeypatch.setattr(ocr_backend, "create_ocr_backend", select_backend)
@@ -969,6 +928,7 @@ def test_windows_pdf_conversion_reports_failure_when_word_fails(monkeypatch, tmp
 def test_macos_word_fallback_passes_paths_as_arguments(monkeypatch, tmp_path: Path):
     if sys.platform == "win32":
         pytest.skip("POSIX filename with quotes not supported on Windows")
+    monkeypatch.setenv("DOCXDODYR_TEST_NO_WORD_CONTAINER", "1")
     source = tmp_path / 'source "quoted".docx'
     target = tmp_path / 'target \\quoted.pdf'
     source.write_bytes(b"placeholder")
@@ -993,6 +953,42 @@ def test_macos_word_fallback_passes_paths_as_arguments(monkeypatch, tmp_path: Pa
     assert "item 2 of argv" in commands[0][2]
     assert "set wasRunning to running" in commands[0][2]
     assert "if not wasRunning then" in commands[0][2]
+
+
+def test_macos_word_fallback_stages_in_container_when_available(monkeypatch, tmp_path: Path):
+    if sys.platform == "win32":
+        pytest.skip("POSIX filename not supported on Windows")
+    monkeypatch.delenv("DOCXDODYR_TEST_NO_WORD_CONTAINER", raising=False)
+    fake_home = tmp_path / "fake_home"
+    fake_container = fake_home / "Library/Containers/com.microsoft.Word/Data"
+    fake_container.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(Path, "home", lambda: fake_home)
+
+    source = tmp_path / "source.docx"
+    target = tmp_path / "target.pdf"
+    source.write_bytes(b"placeholder")
+    commands = []
+
+    class Completed:
+        returncode = 0
+        stderr = ""
+
+    def fake_run(command, **kwargs):
+        commands.append(command)
+        # Simulate Word writing target PDF inside container
+        staged_tgt = Path(command[-1])
+        staged_tgt.write_bytes(b"%PDF-mock")
+        return Completed()
+
+    monkeypatch.setattr(pdf_convert.subprocess, "run", fake_run)
+
+    assert pdf_convert.convert_docx_to_pdf_word_mac(source, target) is True
+    assert len(commands) == 1
+    assert "Library/Containers/com.microsoft.Word/Data/tmp/docxdodyr_pdf" in commands[0][-2]
+    assert "Library/Containers/com.microsoft.Word/Data/tmp/docxdodyr_pdf" in commands[0][-1]
+    assert target.exists()
+    assert target.read_bytes() == b"%PDF-mock"
+
 
 
 def test_macos_word_timeout_does_not_close_user_documents(monkeypatch, tmp_path: Path):

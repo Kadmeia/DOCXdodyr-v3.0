@@ -292,7 +292,35 @@ def convert_docx_to_pdf_libreoffice(docx_path, pdf_path):
 
 def convert_docx_to_pdf_word_mac(docx_path, pdf_path):
     """Конвертирует DOCX в PDF используя Microsoft Word на macOS через AppleScript"""
+    import uuid
+    temp_docx = None
+    temp_pdf = None
     try:
+        src_path_obj = Path(docx_path).resolve()
+        tgt_path_obj = Path(pdf_path).resolve()
+
+        # macOS Sandbox: Word в песочнице Apple (com.microsoft.Word) не имеет прямого доступа
+        # к внешним временным папкам (например, /private/var/folders/...), что вызывает модальный
+        # запрос "Предоставить доступ к файлам".
+        # Чтобы конвертация происходила полностью автоматически без всплывающих окон,
+        # временно копируем файл в песочный контейнер Word (~/Library/Containers/com.microsoft.Word/Data/tmp),
+        # к которому у Word есть встроенный неограниченный доступ.
+        container_data = Path.home() / "Library/Containers/com.microsoft.Word/Data"
+        use_container = container_data.is_dir() and not os.environ.get("DOCXDODYR_TEST_NO_WORD_CONTAINER")
+
+        if use_container:
+            stage_dir = container_data / "tmp" / "docxdodyr_pdf"
+            stage_dir.mkdir(parents=True, exist_ok=True)
+            token = uuid.uuid4().hex[:10]
+            temp_docx = stage_dir / f"src_{token}.docx"
+            temp_pdf = stage_dir / f"tgt_{token}.pdf"
+            shutil.copy2(src_path_obj, temp_docx)
+            src_resolved = str(temp_docx)
+            tgt_resolved = str(temp_pdf)
+        else:
+            src_resolved = str(src_path_obj)
+            tgt_resolved = str(tgt_path_obj)
+
         script = '''
 on run argv
     set srcFile to (POSIX file (item 1 of argv)) as alias
@@ -328,10 +356,12 @@ on run argv
     return "OK"
 end run
 '''
-        src_resolved = str(Path(docx_path).resolve())
-        tgt_resolved = str(Path(pdf_path).resolve())
         cmd = ["osascript", "-e", script, src_resolved, tgt_resolved]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+
+        if use_container and temp_pdf and temp_pdf.exists():
+            tgt_path_obj.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(temp_pdf, tgt_path_obj)
 
         if result.returncode == 0 and os.path.exists(pdf_path):
             return True
@@ -344,6 +374,11 @@ end run
     except Exception as e:
         print(f"Word on macOS conversion failed: {e}")
         return False
+    finally:
+        if temp_docx and temp_docx.exists():
+            temp_docx.unlink(missing_ok=True)
+        if temp_pdf and temp_pdf.exists():
+            temp_pdf.unlink(missing_ok=True)
 
 def convert_docx_to_pdf_word(docx_path, pdf_path):
     """Конвертирует DOCX в PDF используя Microsoft Word"""
@@ -861,14 +896,14 @@ def ocr_pdf_to_result(
             selected_page_numbers.sort()
 
         # Apple Vision creates an independent request/handler for every image;
-        # pytesseract starts an independent local process per call.  Normal
+        # Indra OCR is thread-safe across workers. Normal
         # text-heavy pages can therefore be recognized concurrently by these
         # adapters.  Keep the queue bounded: a rendered 2x page may occupy tens
         # of megabytes before PNG compression.  If a page is sparse or the
         # backend fails, discard the speculative result and run the unchanged
         # sequential safety path below, including its second-engine check.
         if ocr_workers is None:
-            default_workers = 3 if backend_info.name == "tesseract" else 2
+            default_workers = 2
             try:
                 ocr_workers = int(os.environ.get(
                     "DOCXDODYR_OCR_WORKERS", str(default_workers)
@@ -880,7 +915,7 @@ def ocr_pdf_to_result(
         ))
         if cancel_check and cancel_check():
             raise PDFOCRCancelled("Распознавание PDF отменено пользователем")
-        if backend_info.name in {"indra", "applevision", "tesseract"} and worker_count > 1:
+        if backend_info.name in {"indra", "applevision"} and worker_count > 1:
             from collections import deque
             from concurrent.futures import ThreadPoolExecutor
 
