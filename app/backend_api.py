@@ -827,8 +827,12 @@ class BackendApi:
                         ok, msg = restorer.restore_docx(str(doc_path_obj))
                     elif suffix in (".xlsx", ".xls", ".xlsm"):
                         ok, msg = restorer.restore_excel(str(doc_path_obj))
+                    elif suffix in (".pptx", ".pptm"):
+                        ok, msg = restorer.restore_pptx(doc_path_obj)
                     elif suffix == ".md":
                         ok, msg = restorer.restore_markdown(str(doc_path_obj))
+                    elif suffix in (".txt", ".log", ".csv", ".json"):
+                        ok, msg = restorer.restore_text(doc_path_obj)
                     elif suffix == ".pdf":
                         raise ValueError(
                             "Восстановление PDF невозможно: PDF является финальным (необратимым) форматом публикации. "

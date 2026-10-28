@@ -548,3 +548,30 @@ def test_cycle5_format_registry_and_dialog_filters():
     assert "*.log" in main_code
     assert "*.csv" in main_code
     assert "*.json" in main_code
+
+
+def test_cycle5_backend_api_run_restore_pptx_and_text(tmp_path):
+    """Проверка работы BackendApi._run_restore для форматов .pptx и .txt."""
+    import json
+    from backend_api import BackendApi
+
+    # 1. Текстовый файл
+    txt_file = tmp_path / "документ_cleaned.txt"
+    txt_file.write_text("Исполнитель: [ФИО_1]", encoding="utf-8")
+    dec_file = tmp_path / "документ_Дешифратор.json"
+    dec_file.write_text(json.dumps({"[ФИО_1]": "Петров Петр"}, ensure_ascii=False), encoding="utf-8")
+
+    api = BackendApi.__new__(BackendApi)
+    api.restore_doc_paths = [str(txt_file)]
+    api.restore_json_paths = [str(dec_file)]
+    api.auto_decoder = False
+    api.settings = {}
+    api._window = None
+
+    res = api._run_restore()
+    assert len(res["successes"]) == 1
+    assert len(res["errors"]) == 0
+    restored_txt = tmp_path / "документ_cleaned_восстановлено.txt"
+    assert restored_txt.exists()
+    assert "Петров Петр" in restored_txt.read_text(encoding="utf-8")
+
