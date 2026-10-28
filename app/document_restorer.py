@@ -492,7 +492,7 @@ def _bound_decoder_for_document(document, allow_edited: bool = False):
         # существует ровно один валидный дешифратор, связываем его без требования совпадения стема.
         try:
             curr_dir = document.parent
-            for _ in range(4):
+            for _ in range(2):
                 found_at_level = []
                 for p in curr_dir.glob("*.json"):
                     if p.is_file() and not p.is_symlink() and p.stat().st_size <= 10 * 1024 * 1024:
@@ -635,7 +635,7 @@ def find_decoder_near_document(doc_path, *, max_parent_levels=4, max_decoder_byt
                 except Exception:
                     pass
 
-        if is_edited:
+        if is_edited and level <= 1:
             level_decoders = []
             try:
                 for j_file in curr.glob("*.json"):
