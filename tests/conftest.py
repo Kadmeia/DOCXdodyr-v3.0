@@ -117,3 +117,9 @@ def block_external_network(monkeypatch, request):
         raise RuntimeError(f"Внешние сетевые вызовы в тестах строго запрещены (попытка обращения к {address}).")
 
     monkeypatch.setattr(socket.socket, "connect", guarded_connect)
+
+
+def pytest_runtest_logreport(report):
+    if report.failed and report.when in ("setup", "call"):
+        summary = str(report.longrepr).replace("\n", " ")[:300]
+        print(f"\n::error file={report.location[0]},line={report.location[1]},title={report.nodeid}::{summary}\n", file=sys.stderr)
