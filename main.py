@@ -1375,7 +1375,7 @@ def handle_cli_arguments() -> bool:
             raise SystemExit(1)
         try:
             from document_restorer import find_decoder_near_document, restore_document
-            supported = {'.docx', '.docm', '.xlsx', '.xlsm', '.pptx', '.pptm', '.md', '.txt', '.log', '.csv', '.json'}
+            supported = {'.docx', '.docm', '.xlsx', '.xlsm', '.pptx', '.pptm', '.md', '.txt', '.log', '.csv'}
             results = []
             for target_str in clean_paths:
                 target = Path(target_str).resolve()
